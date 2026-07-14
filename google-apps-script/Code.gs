@@ -225,7 +225,13 @@ function saveActivity_(payload) {
       now,
     ]
 
-    const activityFolder = getActivityFolder_(config.rootFolderId, activity.groupName, activityId)
+    const activityFolder = getActivityFolder_(
+      config.rootFolderId,
+      activity.groupName,
+      activityId,
+      activity.activityNo,
+      activity.activityDate,
+    )
     const imageRows = images.map((image, index) => {
       validateImage_(image)
       const bytes = Utilities.base64Decode(image.base64)
@@ -303,10 +309,106 @@ function findRow_(sheet, column, value) {
   return match ? match.getRow() : 0
 }
 
-function getActivityFolder_(rootFolderId, groupName, activityId) {
+function getActivityFolder_(rootFolderId, groupName, activityId, activityNo, activityDate) {
   const rootFolder = DriveApp.getFolderById(rootFolderId)
   const groupFolder = getOrCreateFolder_(rootFolder, safeFolderName_(groupName))
-  return getOrCreateFolder_(groupFolder, activityId)
+  const folderName = getActivityFolderName_(activityNo, activityDate)
+  let activityFolder = findActivityFolder_(groupFolder, activityId)
+
+  if (!activityFolder) {
+    const sameNameFolders = groupFolder.getFoldersByName(folderName)
+    if (sameNameFolders.hasNext()) {
+      const sameNameFolder = sameNameFolders.next()
+      if (sameNameFolder.getDescription() === getActivityFolderMarker_(activityId)) {
+        activityFolder = sameNameFolder
+      }
+    }
+  }
+
+  if (!activityFolder) {
+    const sameNameFolders = groupFolder.getFoldersByName(folderName)
+    const uniqueName = sameNameFolders.hasNext() ? `${folderName} (${clean_(activityId).slice(0, 8)})` : folderName
+    activityFolder = groupFolder.createFolder(uniqueName)
+  } else if (activityFolder.getName() !== folderName) {
+    activityFolder.setName(folderName)
+  }
+
+  activityFolder.setDescription(getActivityFolderMarker_(activityId))
+  return activityFolder
+}
+
+function getActivityFolderName_(activityNo, activityDate) {
+  const activityNumber = Number(activityNo)
+  const numberLabel = Number.isFinite(activityNumber) && activityNumber > 0
+    ? String(Math.trunc(activityNumber)).padStart(2, '0')
+    : clean_(activityNo) || 'ไม่ระบุ'
+  return safeFolderName_(`ครั้งที่ ${numberLabel} - ${formatActivityFolderDate_(activityDate)}`)
+}
+
+function formatActivityFolderDate_(value) {
+  const dateValue = formatDateValue_(value)
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue)
+  if (!match) return dateValue || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd')
+  return `${Number(match[1]) + 543}-${match[2]}-${match[3]}`
+}
+
+function getActivityFolderMarker_(activityId) {
+  return `HRP PLC | activity_id=${clean_(activityId)}`
+}
+
+function findActivityFolder_(groupFolder, activityId) {
+  const legacyFolders = groupFolder.getFoldersByName(clean_(activityId))
+  if (legacyFolders.hasNext()) return legacyFolders.next()
+
+  const marker = getActivityFolderMarker_(activityId)
+  const folders = groupFolder.getFolders()
+  while (folders.hasNext()) {
+    const folder = folders.next()
+    if (folder.getDescription() === marker) return folder
+  }
+  return null
+}
+
+function renameExistingActivityFolders() {
+  const config = getConfig_()
+  if (!config.spreadsheetId || !config.rootFolderId) {
+    throw new Error('ยังไม่ได้ตั้งค่าระบบ กรุณารัน setupProject() ก่อน')
+  }
+
+  const spreadsheet = SpreadsheetApp.openById(config.spreadsheetId)
+  const sheet = ensureSheet_(spreadsheet, SHEET_NAMES.ACTIVITIES, HEADERS.activities)
+  const rootFolder = DriveApp.getFolderById(config.rootFolderId)
+  const result = { renamed: 0, unchanged: 0, notFound: 0 }
+  if (sheet.getLastRow() < 2) return result
+
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.activities.length).getValues()
+  rows.forEach((row) => {
+    const activityId = clean_(row[0])
+    const groupName = clean_(row[3])
+    const groupFolders = rootFolder.getFoldersByName(safeFolderName_(groupName))
+    if (!activityId || !groupFolders.hasNext()) {
+      result.notFound += 1
+      return
+    }
+
+    const activityFolder = findActivityFolder_(groupFolders.next(), activityId)
+    if (!activityFolder) {
+      result.notFound += 1
+      return
+    }
+
+    const folderName = getActivityFolderName_(row[4], row[5])
+    if (activityFolder.getName() === folderName) {
+      result.unchanged += 1
+    } else {
+      activityFolder.setName(folderName)
+      result.renamed += 1
+    }
+    activityFolder.setDescription(getActivityFolderMarker_(activityId))
+  })
+
+  console.log(JSON.stringify(result, null, 2))
+  return result
 }
 
 function getOrCreateFolder_(parent, name) {
