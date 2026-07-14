@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import logoUrl from '../Logo.jpg'
-import { isGoogleAppsScriptConfigured, listActivities, saveActivity } from './services/googleAppsScript'
+import { checkGoogleAccess, getActivity, isGoogleAppsScriptConfigured, listActivities, saveActivity } from './services/googleAppsScript'
+import { clearGoogleAuth, getGoogleClientId, getGoogleUser, isGoogleLoginConfigured, loadGoogleIdentityServices, saveGoogleCredential } from './services/googleAuth'
 
 const Icon = ({ name, className = 'h-5 w-5' }) => {
   const paths = {
@@ -98,7 +99,7 @@ function FieldLabel({ children, required = false, hint }) {
   )
 }
 
-function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
+function ActivityForm({ onCancel, initialActivity = null, onSaved, currentUser }) {
   const [files, setFiles] = useState([])
   const [savedActivityId, setSavedActivityId] = useState(initialActivity?.activityId || '')
   const [saveState, setSaveState] = useState({ type: 'idle', message: '' })
@@ -164,7 +165,7 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
           {!isGoogleAppsScriptConfigured() && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800">
               <strong>ยังไม่ได้เชื่อม Google Apps Script</strong><br />
-              ฟอร์มพร้อมใช้งานแล้ว แต่ต้องเพิ่ม Web App URL และ App Key ลงในไฟล์ <code className="rounded bg-amber-100 px-1.5 py-0.5">.env.local</code> ก่อนบันทึกจริง
+              ฟอร์มพร้อมใช้งานแล้ว แต่ต้องเพิ่ม Web App URL ลงในไฟล์ <code className="rounded bg-amber-100 px-1.5 py-0.5">.env.local</code> ก่อนบันทึกจริง
             </div>
           )}
           <section>
@@ -273,7 +274,7 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <FieldLabel required>ผู้บันทึกกิจกรรม</FieldLabel>
-                <input required name="recorder" className={inputClass} defaultValue={initialActivity?.recorder || 'คุณครูสุทธิดา'} />
+                <input required name="recorder" className={inputClass} defaultValue={initialActivity?.recorder || currentUser?.name || ''} />
               </div>
               <div>
                 <FieldLabel required>จำนวนผู้เข้าร่วม</FieldLabel>
@@ -506,26 +507,26 @@ function GroupsPage({ onNavigate }) {
   )
 }
 
-function useActivities(includeImages = false) {
+function useActivities(includeImages = false, allowCache = true) {
   const cachedActivities = readCachedActivities()
-  const [state, setState] = useState({ loading: cachedActivities.length === 0, activities: cachedActivities, error: '', notice: '' })
+  const [state, setState] = useState({ loading: !allowCache || cachedActivities.length === 0, activities: allowCache ? cachedActivities : [], error: '', notice: '' })
 
   const load = useCallback(async () => {
     const cached = readCachedActivities()
-    setState((current) => ({ ...current, loading: current.activities.length === 0, error: '', notice: '' }))
+    setState((current) => ({ ...current, loading: !allowCache || current.activities.length === 0, error: '', notice: '' }))
     try {
       const remoteActivities = await listActivities({ includeImages })
-      const activities = mergeActivities(remoteActivities, cached)
+      const activities = allowCache ? mergeActivities(remoteActivities, cached) : remoteActivities
       writeCachedActivities(activities.map(({ images: _images, ...activity }) => activity))
       setState({ loading: false, activities, error: '', notice: '' })
     } catch (error) {
-      if (cached.length) {
+      if (allowCache && cached.length) {
         setState({ loading: false, activities: cached, error: '', notice: 'กำลังแสดงประวัติที่บันทึกไว้ในเบราว์เซอร์ เนื่องจากยังโหลดข้อมูลจาก Google Sheet ไม่สำเร็จ' })
       } else {
         setState({ loading: false, activities: [], error: error.message, notice: '' })
       }
     }
-  }, [includeImages])
+  }, [allowCache, includeImages])
 
   useEffect(() => { load() }, [load])
   return { ...state, reload: load }
@@ -538,6 +539,23 @@ function LoadingPanel({ message }) {
 function HistoryPage({ onEdit, onNavigate }) {
   const { activities, loading, error, notice, reload } = useActivities()
   const [query, setQuery] = useState('')
+  const [details, setDetails] = useState({})
+  const [detailState, setDetailState] = useState({ activityId: '', error: '' })
+
+  const toggleDetails = async (activity) => {
+    if (details[activity.activityId]) {
+      setDetails((current) => ({ ...current, [activity.activityId]: null }))
+      return
+    }
+    setDetailState({ activityId: activity.activityId, error: '' })
+    try {
+      const fullActivity = await getActivity(activity.activityId)
+      setDetails((current) => ({ ...current, [activity.activityId]: fullActivity }))
+      setDetailState({ activityId: '', error: '' })
+    } catch (detailError) {
+      setDetailState({ activityId: activity.activityId, error: detailError.message })
+    }
+  }
 
   if (loading) return <LoadingPanel message="กำลังโหลดประวัติกิจกรรม..." />
   if (error) {
@@ -563,8 +581,9 @@ function HistoryPage({ onEdit, onNavigate }) {
   return (
     <section className="space-y-4">
       {notice && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">{notice}</div>}
-      <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row">
         <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass.replace('mt-2 ', '')} placeholder="ค้นหาชื่อกลุ่ม ชื่อกิจกรรม ผู้บันทึก หรือวันที่" />
+        <button type="button" onClick={reload} className="shrink-0 rounded-xl border border-blue-200 px-5 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">รีเฟรชข้อมูล</button>
       </div>
       {!filteredActivities.length && <div className="rounded-[20px] border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">ไม่พบกิจกรรมที่ตรงกับคำค้นหา</div>}
       {filteredActivities.map((activity) => (
@@ -579,8 +598,33 @@ function HistoryPage({ onEdit, onNavigate }) {
               <p className="mt-1 text-sm text-slate-500">{activity.groupName} · ครั้งที่ {activity.activityNo} · {activity.activityDate} · {activity.hours} ชั่วโมง</p>
               <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{activity.details}</p>
             </div>
-            <button type="button" onClick={() => onEdit(activity)} className="shrink-0 rounded-xl border border-blue-200 px-5 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-50">แก้ไข</button>
+            <div className="flex shrink-0 gap-2">
+              <button type="button" onClick={() => toggleDetails(activity)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">{details[activity.activityId] ? 'ซ่อนรายละเอียด' : 'ดูรายละเอียด'}</button>
+              <button type="button" onClick={() => onEdit(details[activity.activityId] || activity)} className="rounded-xl border border-blue-200 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-50">แก้ไข</button>
+            </div>
           </div>
+          {detailState.activityId === activity.activityId && !detailState.error && <p className="mt-5 text-sm font-semibold text-blue-600">กำลังโหลดรายละเอียดและรูปหลักฐาน...</p>}
+          {detailState.activityId === activity.activityId && detailState.error && <p className="mt-5 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{detailState.error}</p>}
+          {details[activity.activityId] && (
+            <div className="mt-5 space-y-5 border-t border-slate-200 pt-5">
+              <dl className="grid gap-4 text-sm md:grid-cols-2">
+                <div><dt className="font-bold text-slate-500">วัตถุประสงค์</dt><dd className="mt-1 whitespace-pre-wrap text-slate-800">{details[activity.activityId].objective || '-'}</dd></div>
+                <div><dt className="font-bold text-slate-500">ผลที่เกิดขึ้น</dt><dd className="mt-1 whitespace-pre-wrap text-slate-800">{details[activity.activityId].result || '-'}</dd></div>
+                <div><dt className="font-bold text-slate-500">ปัญหาและอุปสรรค</dt><dd className="mt-1 whitespace-pre-wrap text-slate-800">{details[activity.activityId].problems || '-'}</dd></div>
+                <div><dt className="font-bold text-slate-500">แนวทางครั้งต่อไป</dt><dd className="mt-1 whitespace-pre-wrap text-slate-800">{details[activity.activityId].nextAction || '-'}</dd></div>
+                <div className="md:col-span-2"><dt className="font-bold text-slate-500">รายละเอียดกิจกรรม</dt><dd className="mt-1 whitespace-pre-wrap text-slate-800">{details[activity.activityId].details || '-'}</dd></div>
+                <div className="md:col-span-2"><dt className="font-bold text-slate-500">ผู้เข้าร่วม</dt><dd className="mt-1 whitespace-pre-wrap text-slate-800">{details[activity.activityId].participants || '-'}</dd></div>
+              </dl>
+              <div>
+                <p className="text-sm font-bold text-slate-500">รูปภาพหลักฐาน ({details[activity.activityId].images?.length || 0})</p>
+                {details[activity.activityId].images?.length ? (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {details[activity.activityId].images.map((image, index) => <figure key={`${activity.activityId}-${index}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src={image.url} alt={image.caption || `รูปหลักฐาน ${index + 1}`} className="h-40 w-full object-cover" /><figcaption className="p-3 text-xs text-slate-600">{image.caption || `รูปหลักฐาน ${index + 1}`}</figcaption></figure>)}
+                  </div>
+                ) : <p className="mt-2 text-sm text-slate-400">กิจกรรมนี้ยังไม่มีรูปภาพหลักฐาน</p>}
+              </div>
+            </div>
+          )}
         </article>
       ))}
     </section>
@@ -593,7 +637,7 @@ function escapeHtml(value) {
 
 function printGroupReport(groupName, activities) {
   const reportWindow = window.open('', '_blank')
-  if (!reportWindow) return
+  if (!reportWindow) return false
   const ordered = [...activities].sort((a, b) => Number(a.plcStep) - Number(b.plcStep))
   const totalHours = ordered.reduce((sum, activity) => sum + Number(activity.hours || 0), 0)
   const group = readLocalGroups().find((item) => item.groupName === groupName) || {}
@@ -651,13 +695,36 @@ function printGroupReport(groupName, activities) {
   </section>`
 
   reportWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>รายงาน PLC - ${escapeHtml(groupName)}</title><style>
-    @page{size:A4;margin:10mm 12mm}*{box-sizing:border-box}body{margin:0;background:#e5e7eb;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;color:#000;line-height:1.28;font-size:16pt}.page{width:210mm;min-height:297mm;margin:10px auto;padding:13mm 14mm;background:#fff;page-break-after:always}.page:last-child{page-break-after:auto}.cover{padding-top:25mm}.cover h1{text-align:center;font-size:24pt;line-height:1.2;margin:0}.school{text-align:center;font-size:19pt;margin:8px 0 25px}.cover dl{display:grid;grid-template-columns:48mm 1fr;gap:8px;font-size:17pt}.cover dt{font-weight:bold}.cover dd{margin:0}.cover h2{margin-top:22px;font-size:20pt}.activity-heading{display:flex;justify-content:space-between;border-bottom:1px solid #111;padding-bottom:5px;margin-bottom:6px;font-size:17pt}.activity-table{width:100%;border-collapse:collapse;font-size:14pt;line-height:1.18}.activity-table th,.activity-table td{border:1px solid #333;padding:3px 6px;vertical-align:top}.activity-table th{width:42mm;text-align:center;font-weight:bold}.evidence-title{font-size:16pt;margin:6px 0 3px}.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}.photo{height:29mm;border:1px solid #777;overflow:hidden;position:relative;display:grid;place-items:center;font-size:13pt}.photo img{width:100%;height:100%;object-fit:cover}.photo span{position:absolute;bottom:0;left:0;right:0;padding:1px 4px;background:rgba(255,255,255,.86);font-size:11pt}.photo.empty{color:#555;border-radius:7px}.signature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:5px;text-align:center}.signature-row.two{grid-template-columns:1fr 1fr}.signature{font-size:12pt;line-height:1.2}.signature strong{display:block;font-size:12.5pt}.subject-head{width:55%;margin:4px auto 0;text-align:center}.opinion{border-top:1px solid #111;border-bottom:1px solid #111;margin-top:5px;padding:3px 6px;text-align:left;font-size:12pt;line-height:1.2}.opinion>strong{display:block;font-size:13pt}.writing-lines{line-height:1.25;color:#333}.opinion .signature-row{margin-top:1px}.director{text-align:center}.director>.signature{width:58%;margin:1px auto 0}.print-button{position:fixed;right:20px;top:20px;z-index:10;padding:11px 20px;background:#2563eb;color:white;border:0;border-radius:9px;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;font-size:16pt;font-weight:bold;box-shadow:0 4px 14px #0003}@media print{body{background:#fff}.page{margin:0;padding:10mm 12mm;box-shadow:none}.print-button{display:none}}
+    @page{size:A4;margin:10mm 12mm}*{box-sizing:border-box}body{margin:0;background:#e5e7eb;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;color:#000;line-height:1.28;font-size:16pt}.page{width:210mm;min-height:297mm;margin:10px auto;padding:13mm 14mm;background:#fff;page-break-after:always}.page:last-child{page-break-after:auto}.cover{padding-top:25mm}.cover h1{text-align:center;font-size:24pt;line-height:1.2;margin:0}.school{text-align:center;font-size:19pt;margin:8px 0 25px}.cover dl{display:grid;grid-template-columns:48mm 1fr;gap:8px;font-size:17pt}.cover dt{font-weight:bold}.cover dd{margin:0}.cover h2{margin-top:22px;font-size:20pt}.activity-heading{display:flex;justify-content:space-between;border-bottom:1px solid #111;padding-bottom:5px;margin-bottom:6px;font-size:17pt}.activity-table{width:100%;border-collapse:collapse;font-size:14pt;line-height:1.18}.activity-table th,.activity-table td{border:1px solid #333;padding:3px 6px;vertical-align:top}.activity-table td{white-space:pre-wrap}.activity-table th{width:42mm;text-align:center;font-weight:bold}.evidence-title{font-size:16pt;margin:6px 0 3px}.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}.photo{height:29mm;border:1px solid #777;overflow:hidden;position:relative;display:grid;place-items:center;font-size:13pt}.photo img{width:100%;height:100%;object-fit:cover}.photo span{position:absolute;bottom:0;left:0;right:0;padding:1px 4px;background:rgba(255,255,255,.86);font-size:11pt}.photo.empty{color:#555;border-radius:7px}.signature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:5px;text-align:center}.signature-row.two{grid-template-columns:1fr 1fr}.signature{font-size:12pt;line-height:1.2}.signature strong{display:block;font-size:12.5pt}.subject-head{width:55%;margin:4px auto 0;text-align:center}.opinion{border-top:1px solid #111;border-bottom:1px solid #111;margin-top:5px;padding:3px 6px;text-align:left;font-size:12pt;line-height:1.2}.opinion>strong{display:block;font-size:13pt}.writing-lines{line-height:1.25;color:#333}.opinion .signature-row{margin-top:1px}.director{text-align:center}.director>.signature{width:58%;margin:1px auto 0}.print-button{position:fixed;right:20px;top:20px;z-index:10;padding:11px 20px;background:#2563eb;color:white;border:0;border-radius:9px;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;font-size:16pt;font-weight:bold;box-shadow:0 4px 14px #0003}@media print{body{background:#fff}.page{margin:0;padding:10mm 12mm;box-shadow:none}.print-button{display:none}}
   </style></head><body><button class="print-button" onclick="window.print()">พิมพ์ / บันทึก PDF</button>${cover}${activityPages}</body></html>`)
   reportWindow.document.close()
+  reportWindow.focus()
+  return true
+}
+
+function downloadActivitiesCsv(groupName, activities) {
+  const columns = [
+    ['ครั้งที่', 'activityNo'], ['วันที่', 'activityDate'], ['เวลาเริ่ม', 'startTime'], ['เวลาสิ้นสุด', 'endTime'],
+    ['ชั่วโมง', 'hours'], ['ขั้นตอน PLC', 'plcStep'], ['ชื่อขั้นตอน', 'plcStepName'], ['ชื่อกิจกรรม', 'title'],
+    ['วัตถุประสงค์', 'objective'], ['รายละเอียด', 'details'], ['ผลที่เกิดขึ้น', 'result'], ['ปัญหาและอุปสรรค', 'problems'],
+    ['แนวทางครั้งต่อไป', 'nextAction'], ['ผู้บันทึก', 'recorder'], ['จำนวนผู้เข้าร่วม', 'participantCount'], ['รายชื่อผู้เข้าร่วม', 'participants'],
+  ]
+  const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
+  const rows = [columns.map(([label]) => csvCell(label)).join(','), ...activities.map((activity) => columns.map(([, key]) => csvCell(activity[key])).join(','))]
+  const blob = new Blob([`\uFEFF${rows.join('\r\n')}`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `PLC-${groupName.replace(/[\\/:*?"<>|]/g, '-')}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
 function ReportsPage() {
-  const { activities, loading, error, reload } = useActivities(true)
+  const { activities, loading, error, reload } = useActivities(true, false)
+  const [exportError, setExportError] = useState('')
   if (loading) return <LoadingPanel message="กำลังตรวจสอบความครบถ้วนของรายงาน..." />
   if (error) return <div className="rounded-[24px] border border-rose-200 bg-rose-50 p-8 text-center text-rose-700"><p className="font-bold">โหลดข้อมูลรายงานไม่สำเร็จ</p><p className="mt-2 text-sm">{error}</p><button type="button" onClick={reload} className="mt-5 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-bold text-white">ลองใหม่</button></div>
 
@@ -670,7 +737,9 @@ function ReportsPage() {
   if (!entries.length) return <LoadingPanel message="ยังไม่มีกิจกรรมที่บันทึกสมบูรณ์สำหรับจัดทำรายงาน" />
 
   return (
-    <section className="grid gap-5 lg:grid-cols-2">
+    <section className="space-y-5">
+      {exportError && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">{exportError}</div>}
+      <div className="grid gap-5 lg:grid-cols-2">
       {entries.map(([groupName, groupActivities]) => {
         const completedSteps = new Set(groupActivities.map((activity) => Number(activity.plcStep))).size
         const activityCount = groupActivities.length
@@ -679,15 +748,19 @@ function ReportsPage() {
             <h3 className="text-lg font-extrabold text-slate-950">{groupName}</h3>
             <p className="mt-2 text-sm text-slate-500">บันทึกแล้ว {activityCount} กิจกรรม · ครอบคลุม {completedSteps} จาก 7 ขั้นตอน</p>
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(100, completedSteps / 7 * 100)}%` }} /></div>
-            <button type="button" onClick={() => printGroupReport(groupName, groupActivities)} className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700">เปิดและพิมพ์รายงาน ({activityCount} กิจกรรม)</button>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button type="button" onClick={() => { setExportError(''); if (!printGroupReport(groupName, groupActivities)) setExportError('เบราว์เซอร์ปิดกั้นหน้ารายงาน กรุณาอนุญาต Pop-up แล้วลองใหม่') }} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700">พิมพ์ / บันทึก PDF</button>
+              <button type="button" onClick={() => downloadActivitiesCsv(groupName, groupActivities)} className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100">ดาวน์โหลด CSV</button>
+            </div>
           </article>
         )
       })}
+      </div>
     </section>
   )
 }
 
-function EmptyPage({ activePage, onNavigate }) {
+function EmptyPage({ activePage, onNavigate, currentUser }) {
   const [showActivityForm, setShowActivityForm] = useState(false)
   const [editingActivity, setEditingActivity] = useState(null)
 
@@ -701,14 +774,14 @@ function EmptyPage({ activePage, onNavigate }) {
   }
 
   if (activePage === 'history' && editingActivity) {
-    return <ActivityForm initialActivity={editingActivity} onCancel={() => setEditingActivity(null)} onSaved={() => setEditingActivity(null)} />
+    return <ActivityForm initialActivity={editingActivity} currentUser={currentUser} onCancel={() => setEditingActivity(null)} onSaved={() => setEditingActivity(null)} />
   }
 
   if (activePage === 'history') return <HistoryPage onEdit={setEditingActivity} onNavigate={onNavigate} />
   if (activePage === 'reports') return <ReportsPage />
 
   if (activePage === 'activity' && showActivityForm) {
-    return <ActivityForm onCancel={() => setShowActivityForm(false)} />
+    return <ActivityForm currentUser={currentUser} onCancel={() => setShowActivityForm(false)} />
   }
 
   const content = {
@@ -774,9 +847,66 @@ function EmptyPage({ activePage, onNavigate }) {
   )
 }
 
+function LoginScreen({ onLogin }) {
+  const buttonRef = useRef(null)
+  const [state, setState] = useState({ loading: true, error: '' })
+
+  useEffect(() => {
+    if (!isGoogleLoginConfigured()) {
+      setState({ loading: false, error: 'ยังไม่ได้ตั้งค่า VITE_GOOGLE_CLIENT_ID สำหรับเว็บไซต์' })
+      return undefined
+    }
+
+    let cancelled = false
+    loadGoogleIdentityServices().then((google) => {
+      if (cancelled || !buttonRef.current) return
+      google.accounts.id.initialize({
+        client_id: getGoogleClientId(),
+        callback: async (response) => {
+          try {
+            setState({ loading: true, error: '' })
+            const user = saveGoogleCredential(response.credential)
+            await checkGoogleAccess()
+            onLogin(user)
+          } catch (error) {
+            clearGoogleAuth()
+            setState({ loading: false, error: error.message })
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: false,
+      })
+      buttonRef.current.replaceChildren()
+      google.accounts.id.renderButton(buttonRef.current, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'th', width: 300 })
+      setState({ loading: false, error: '' })
+    }).catch((error) => {
+      if (!cancelled) setState({ loading: false, error: error.message })
+    })
+
+    return () => { cancelled = true }
+  }, [onLogin])
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-gradient-to-br from-blue-50 via-white to-indigo-100 p-5">
+      <section className="w-full max-w-md rounded-[28px] border border-blue-100 bg-white p-8 text-center shadow-[0_24px_70px_rgba(37,99,235,0.16)] sm:p-10">
+        <div className="mx-auto grid h-24 w-24 place-items-center overflow-hidden rounded-[24px] bg-white p-2 shadow-lg ring-1 ring-slate-100">
+          <img src={logoUrl} alt="ตราโรงเรียนหาดใหญ่รัฐประชาสรรค์" className="h-full w-full object-contain" />
+        </div>
+        <h1 className="mt-6 text-3xl font-extrabold text-slate-950">HRP PLC Online</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-500">เข้าสู่ระบบด้วยบัญชี Google ที่ได้รับอนุญาต เพื่อบันทึกกิจกรรม ดูประวัติ และส่งออกรายงาน</p>
+        <div className="mt-7 flex min-h-11 justify-center" ref={buttonRef} />
+        {state.loading && <p className="mt-4 text-sm font-semibold text-blue-600">กำลังโหลด Google Login...</p>}
+        {state.error && <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{state.error}</p>}
+        <p className="mt-7 text-xs leading-5 text-slate-400">หากบัญชีของคุณยังไม่ได้รับสิทธิ์ กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มอีเมลใน ALLOWED_EMAILS</p>
+      </section>
+    </main>
+  )
+}
+
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState(getGoogleUser)
   const [title, subtitle] = pageMeta[activePage]
   const localGroups = readLocalGroups()
   const dashboardStats = stats.map((item, index) => index === 0 ? { ...item, value: String(localGroups.length) } : item)
@@ -786,6 +916,20 @@ function App() {
     setMenuOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  const handleLogin = useCallback((user) => setCurrentUser(user), [])
+  const handleLogout = () => {
+    clearGoogleAuth()
+    setCurrentUser(null)
+  }
+
+  useEffect(() => {
+    const handleExpired = () => setCurrentUser(null)
+    window.addEventListener('hrp-auth-expired', handleExpired)
+    return () => window.removeEventListener('hrp-auth-expired', handleExpired)
+  }, [])
+
+  if (!currentUser) return <LoginScreen onLogin={handleLogin} />
 
   return (
     <div className="min-h-screen bg-[#f3f6fb] text-slate-800">
@@ -833,10 +977,10 @@ function App() {
               <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
             </div>
             <div className="flex items-center gap-3 self-start rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:self-auto">
-              <div className="grid h-11 w-11 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">ส</div>
+              {currentUser.picture ? <img src={currentUser.picture} alt="รูปโปรไฟล์" className="h-11 w-11 rounded-full object-cover" referrerPolicy="no-referrer" /> : <div className="grid h-11 w-11 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">{currentUser.name.slice(0, 1)}</div>}
               <div>
-                <p className="text-sm font-bold text-slate-900">คุณครูสุทธิดา</p>
-                <p className="text-xs text-slate-500">ครูผู้ใช้งานระบบ</p>
+                <p className="max-w-44 truncate text-sm font-bold text-slate-900">{currentUser.name}</p>
+                <button type="button" onClick={handleLogout} className="text-xs font-semibold text-slate-500 hover:text-rose-600">ออกจากระบบ</button>
               </div>
             </div>
           </header>
@@ -847,7 +991,7 @@ function App() {
                 <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/10" />
                 <div className="absolute bottom-[-90px] right-40 h-48 w-48 rounded-full bg-blue-300/20" />
                 <div className="relative max-w-3xl">
-                  <h3 className="text-2xl font-extrabold sm:text-3xl">สวัสดี คุณครูสุทธิดา <span aria-hidden="true">👋</span></h3>
+                  <h3 className="text-2xl font-extrabold sm:text-3xl">สวัสดี {currentUser.name} <span aria-hidden="true">👋</span></h3>
                   <p className="mt-2 text-sm leading-7 text-blue-50 sm:text-base">สร้างกลุ่ม PLC บันทึกกิจกรรมตามกระบวนการ 7 ขั้นตอน แนบรูปหลักฐาน และส่งออกรายงาน PDF ได้ในระบบเดียว</p>
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button type="button" onClick={() => navigate('create')} className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-blue-700 shadow-md transition hover:-translate-y-0.5">
@@ -916,7 +1060,7 @@ function App() {
               </section>
             </>
           ) : (
-            <EmptyPage activePage={activePage} onNavigate={navigate} />
+            <EmptyPage activePage={activePage} onNavigate={navigate} currentUser={currentUser} />
           )}
         </div>
       </main>

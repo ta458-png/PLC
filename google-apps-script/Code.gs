@@ -32,7 +32,6 @@ function setupProject() {
   const properties = PropertiesService.getScriptProperties()
   let spreadsheetId = properties.getProperty('SPREADSHEET_ID')
   let rootFolderId = properties.getProperty('ROOT_FOLDER_ID')
-  let appKey = properties.getProperty('APP_KEY')
 
   if (!spreadsheetId) {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.create('HRP PLC Database')
@@ -44,11 +43,6 @@ function setupProject() {
     const folder = DriveApp.createFolder('HRP PLC Uploads')
     rootFolderId = folder.getId()
     properties.setProperty('ROOT_FOLDER_ID', rootFolderId)
-  }
-
-  if (!appKey) {
-    appKey = `${Utilities.getUuid()}-${Utilities.getUuid()}`
-    properties.setProperty('APP_KEY', appKey)
   }
 
   const spreadsheet = SpreadsheetApp.openById(spreadsheetId)
@@ -64,7 +58,7 @@ function setupProject() {
     spreadsheetUrl: spreadsheet.getUrl(),
     rootFolderId,
     rootFolderUrl: `https://drive.google.com/drive/folders/${rootFolderId}`,
-    appKey,
+    googleAuthConfigured: Boolean(properties.getProperty('GOOGLE_CLIENT_ID') && properties.getProperty('ALLOWED_EMAILS')),
   }
   console.log(JSON.stringify(result, null, 2))
   return result
@@ -87,11 +81,11 @@ function doPost(event) {
 
     const payload = JSON.parse(event.postData.contents)
     const config = getConfig_()
-    if (!config.appKey || payload.appKey !== config.appKey) {
-      throw new Error('App Key ไม่ถูกต้อง')
-    }
+    const user = verifyGoogleUser_(payload.idToken, config)
+    if (payload.action === 'checkAccess') return json_({ ok: true, user })
     if (payload.action === 'saveActivity') return json_(saveActivity_(payload))
     if (payload.action === 'listActivities') return json_(listActivities_(payload.includeImages === true))
+    if (payload.action === 'getActivity') return json_(getActivity_(payload.activityId))
     throw new Error('ไม่รองรับคำสั่งนี้')
   } catch (error) {
     console.error(error.stack || error)
@@ -99,7 +93,45 @@ function doPost(event) {
   }
 }
 
-function listActivities_(includeImages) {
+function verifyGoogleUser_(idToken, config) {
+  if (!config.googleClientId || !config.allowedEmails.length) {
+    throw new Error('ยังไม่ได้ตั้งค่า Google Login ใน Script Properties')
+  }
+  if (!idToken) throw new Error('กรุณาเข้าสู่ระบบด้วย Google')
+
+  const response = UrlFetchApp.fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`, {
+    method: 'get',
+    muteHttpExceptions: true,
+  })
+  if (response.getResponseCode() !== 200) throw new Error('เซสชัน Google ไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่')
+
+  const identity = JSON.parse(response.getContentText())
+  const validIssuer = identity.iss === 'accounts.google.com' || identity.iss === 'https://accounts.google.com'
+  const emailVerified = identity.email_verified === true || identity.email_verified === 'true'
+  const unexpired = Number(identity.exp) * 1000 > Date.now()
+  const email = clean_(identity.email).toLowerCase()
+
+  if (identity.aud !== config.googleClientId || !validIssuer || !emailVerified || !unexpired) {
+    throw new Error('ไม่สามารถยืนยันบัญชี Google ได้')
+  }
+  if (!config.allowedEmails.includes(email)) {
+    throw new Error(`บัญชี ${email} ไม่มีสิทธิ์ใช้งานระบบ`)
+  }
+
+  return { id: identity.sub, email, name: clean_(identity.name) }
+}
+
+function checkGoogleAuthSetup() {
+  const config = getConfig_()
+  const result = {
+    configured: Boolean(config.googleClientId && config.allowedEmails.length),
+    allowedUserCount: config.allowedEmails.length,
+  }
+  console.log(JSON.stringify(result, null, 2))
+  return result
+}
+
+function listActivities_(includeImages, activityId) {
   const config = getConfig_()
   if (!config.spreadsheetId) {
     throw new Error('ยังไม่ได้ตั้งค่าระบบ กรุณารัน setupProject() ก่อน Deploy')
@@ -114,10 +146,11 @@ function listActivities_(includeImages) {
   if (imagesSheet.getLastRow() >= 2) {
     const imageRows = imagesSheet.getRange(2, 1, imagesSheet.getLastRow() - 1, HEADERS.activity_images.length).getValues()
     imageRows.forEach((row) => {
-      const activityId = clean_(row[1])
-      if (!imagesByActivity[activityId]) imagesByActivity[activityId] = []
+      const rowActivityId = clean_(row[1])
+      if (activityId && rowActivityId !== activityId) return
+      if (!imagesByActivity[rowActivityId]) imagesByActivity[rowActivityId] = []
       const driveFileId = clean_(row[2])
-      imagesByActivity[activityId].push({
+      imagesByActivity[rowActivityId].push({
         fileName: clean_(row[3]),
         caption: clean_(row[5]),
         sortOrder: Number(row[6]) || 0,
@@ -126,7 +159,8 @@ function listActivities_(includeImages) {
     })
   }
 
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.activities.length).getValues()
+  let rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.activities.length).getValues()
+  if (activityId) rows = rows.filter((row) => clean_(row[0]) === activityId)
   const activities = rows.map((row) => ({
     activityId: clean_(row[0]),
     requestId: clean_(row[1]),
@@ -155,6 +189,13 @@ function listActivities_(includeImages) {
   })).sort((a, b) => String(b.activityDate).localeCompare(String(a.activityDate)) || Number(b.activityNo) - Number(a.activityNo))
 
   return { ok: true, activities }
+}
+
+function getActivity_(activityId) {
+  if (!clean_(activityId)) throw new Error('ไม่พบรหัสกิจกรรม')
+  const result = listActivities_(true, clean_(activityId))
+  if (!result.activities.length) throw new Error('ไม่พบกิจกรรมที่ต้องการ')
+  return { ok: true, activity: result.activities[0] }
 }
 
 function getReportImageDataUrl_(fileId) {
@@ -278,7 +319,8 @@ function getConfig_() {
   return {
     spreadsheetId: properties.getProperty('SPREADSHEET_ID'),
     rootFolderId: properties.getProperty('ROOT_FOLDER_ID'),
-    appKey: properties.getProperty('APP_KEY'),
+    googleClientId: clean_(properties.getProperty('GOOGLE_CLIENT_ID')),
+    allowedEmails: clean_(properties.getProperty('ALLOWED_EMAILS')).split(',').map((email) => email.trim().toLowerCase()).filter(Boolean),
   }
 }
 
