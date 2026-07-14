@@ -7,7 +7,7 @@
   line-height: 1.5;
   font-weight: 400;
   color: #0f172a;
-  background-color: #f8fbff;
+  background-color: #f5f6f8;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -29,7 +29,7 @@ body {
 }
 
 body::selection {
-  background: rgba(59, 130, 246, 0.25);
+  background: rgba(23, 54, 93, 0.22);
 }
 
 #root {

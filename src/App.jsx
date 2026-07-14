@@ -48,7 +48,7 @@ const pageMeta = {
 const stats = [
   { title: 'กลุ่ม PLC', value: '0', icon: 'users', color: 'text-violet-700', bg: 'bg-violet-100' },
   { title: 'กิจกรรมทั้งหมด', value: '0', icon: 'note', color: 'text-orange-600', bg: 'bg-orange-100' },
-  { title: 'ชั่วโมง PLC', value: '0', icon: 'clock', color: 'text-indigo-700', bg: 'bg-indigo-100' },
+  { title: 'ชั่วโมง PLC', value: '0', icon: 'clock', color: 'text-[#17365d]', bg: 'bg-slate-100' },
   { title: 'ขั้นตอนที่ดำเนินการ', value: '0', icon: 'check', color: 'text-emerald-700', bg: 'bg-emerald-100' },
 ]
 
@@ -62,7 +62,7 @@ const plcSteps = [
   'สรุปผลและจัดทำรายงาน',
 ]
 
-const inputClass = 'mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100'
+const inputClass = 'mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#17365d] focus:ring-4 focus:ring-slate-200'
 const ACTIVITY_CACHE_KEY = 'hrp-plc-activities'
 
 function readCachedActivities() {
@@ -148,11 +148,11 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <section className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
-        <div className="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-white px-6 py-5 sm:px-8">
+        <div className="border-b border-slate-200 bg-gradient-to-r from-slate-100 to-white px-6 py-5 sm:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-600 text-white"><Icon name="note" /></span>
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#17365d] text-white"><Icon name="note" /></span>
                 <div>
                   <h3 className="text-xl font-extrabold text-slate-950">{initialActivity ? 'แก้ไขกิจกรรม PLC' : 'แบบบันทึกกิจกรรม PLC'}</h3>
                   <p className="mt-1 text-sm text-slate-500">ข้อมูลที่กรอกจะถูกนำไปจัดทำรายงานและสรุปชั่วโมง PLC</p>
@@ -174,7 +174,7 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
           )}
           <section>
             <div className="mb-5 flex items-center gap-3">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-100 text-sm font-extrabold text-blue-700">1</span>
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-100 text-sm font-extrabold text-[#17365d]">1</span>
               <div>
                 <h4 className="font-extrabold text-slate-900">ข้อมูลกิจกรรม</h4>
                 <p className="text-xs text-slate-500">ระบุกลุ่ม ครั้งที่จัด และช่วงเวลาดำเนินกิจกรรม</p>
@@ -302,9 +302,9 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
               </div>
             </div>
 
-            <label className="grid cursor-pointer place-items-center rounded-[20px] border-2 border-dashed border-blue-200 bg-blue-50/50 p-8 text-center transition hover:border-blue-400 hover:bg-blue-50">
+            <label className="grid cursor-pointer place-items-center rounded-[20px] border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center transition hover:border-slate-500 hover:bg-slate-100">
               <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handleFiles} className="sr-only" />
-              <span className="grid h-12 w-12 place-items-center rounded-xl bg-blue-100 text-blue-700"><Icon name="upload" /></span>
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-slate-100 text-[#17365d]"><Icon name="upload" /></span>
               <span className="mt-3 font-bold text-slate-800">คลิกเพื่อเลือกรูปภาพหลักฐาน</span>
               <span className="mt-1 text-xs text-slate-500">ควรเป็นภาพแนวนอน ภาพละไม่เกิน 10 MB</span>
             </label>
@@ -314,7 +314,7 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
                 {files.map((file, index) => (
                   <div key={`${file.name}-${file.lastModified}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-center gap-3">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-blue-600 shadow-sm"><Icon name="image" /></span>
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-[#17365d] shadow-sm"><Icon name="image" /></span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-slate-700">{index + 1}. {file.name}</p>
                         <p className="text-xs text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
@@ -334,15 +334,15 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
         <div>
           <button type="button" disabled={saveState.type === 'loading'} onClick={onCancel} className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">ยกเลิกและกลับ</button>
           {saveState.message && (
-            <p className={`mt-2 text-sm font-semibold sm:hidden ${saveState.type === 'error' ? 'text-rose-600' : saveState.type === 'success' ? 'text-emerald-600' : 'text-blue-600'}`}>{saveState.message}</p>
+            <p className={`mt-2 text-sm font-semibold sm:hidden ${saveState.type === 'error' ? 'text-rose-600' : saveState.type === 'success' ? 'text-emerald-600' : 'text-[#17365d]'}`}>{saveState.message}</p>
           )}
         </div>
         {saveState.message && (
-          <p className={`hidden max-w-md text-sm font-semibold sm:block ${saveState.type === 'error' ? 'text-rose-600' : saveState.type === 'success' ? 'text-emerald-600' : 'text-blue-600'}`}>{saveState.message}</p>
+          <p className={`hidden max-w-md text-sm font-semibold sm:block ${saveState.type === 'error' ? 'text-rose-600' : saveState.type === 'success' ? 'text-emerald-600' : 'text-[#17365d]'}`}>{saveState.message}</p>
         )}
         <div className="flex flex-col gap-3 sm:flex-row">
-          <button type="submit" name="submitStatus" value="draft" formNoValidate disabled={saveState.type === 'loading'} className="rounded-xl border border-blue-200 px-5 py-3 text-sm font-bold text-blue-700 transition hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60">บันทึกร่าง</button>
-          <button type="submit" name="submitStatus" value="submitted" disabled={saveState.type === 'loading'} className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">{saveState.type === 'loading' ? 'กำลังบันทึก...' : 'บันทึกกิจกรรม'}</button>
+          <button type="submit" name="submitStatus" value="draft" formNoValidate disabled={saveState.type === 'loading'} className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-[#17365d] transition hover:bg-slate-100 disabled:cursor-wait disabled:opacity-60">บันทึกร่าง</button>
+          <button type="submit" name="submitStatus" value="submitted" disabled={saveState.type === 'loading'} className="rounded-xl bg-[#17365d] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-300/60 transition hover:-translate-y-0.5 hover:bg-[#0f2947] disabled:cursor-wait disabled:opacity-60">{saveState.type === 'loading' ? 'กำลังบันทึก...' : 'บันทึกกิจกรรม'}</button>
         </div>
       </div>
     </form>
@@ -446,7 +446,7 @@ function GroupForm({ onCancel, onSaved }) {
           </div>
 
           {saveState.message && (
-            <div className={`rounded-2xl px-5 py-4 text-sm font-semibold ${saveState.type === 'error' ? 'border border-rose-200 bg-rose-50 text-rose-700' : saveState.type === 'success' ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-blue-200 bg-blue-50 text-blue-700'}`}>
+            <div className={`rounded-2xl px-5 py-4 text-sm font-semibold ${saveState.type === 'error' ? 'border border-rose-200 bg-rose-50 text-rose-700' : saveState.type === 'success' ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-slate-300 bg-slate-50 text-[#17365d]'}`}>
               {saveState.message}
             </div>
           )}
@@ -455,7 +455,7 @@ function GroupForm({ onCancel, onSaved }) {
 
       <div className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
         <button type="button" onClick={onCancel} disabled={saveState.type === 'loading'} className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60">ยกเลิก</button>
-        <button type="submit" disabled={saveState.type === 'loading'} className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
+        <button type="submit" disabled={saveState.type === 'loading'} className="rounded-xl bg-[#17365d] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-300/60 transition hover:-translate-y-0.5 hover:bg-[#0f2947] disabled:cursor-wait disabled:opacity-60">
           {saveState.type === 'loading' ? 'กำลังสร้างกลุ่ม...' : 'สร้างกลุ่ม PLC'}
         </button>
       </div>
@@ -482,13 +482,13 @@ function GroupsPage({ onNavigate }) {
     setGroups(nextGroups)
   }
 
-  if (!groups.length) return <div className="grid min-h-72 place-items-center rounded-[24px] border border-dashed border-slate-300 bg-white p-8 text-center"><div><p className="font-bold text-slate-800">ยังไม่มีกลุ่ม PLC ในเบราว์เซอร์นี้</p><button type="button" onClick={() => onNavigate('create')} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">+ สร้างกลุ่มใหม่</button></div></div>
+  if (!groups.length) return <div className="grid min-h-72 place-items-center rounded-[24px] border border-dashed border-slate-300 bg-white p-8 text-center"><div><p className="font-bold text-slate-800">ยังไม่มีกลุ่ม PLC ในเบราว์เซอร์นี้</p><button type="button" onClick={() => onNavigate('create')} className="mt-5 rounded-xl bg-[#17365d] px-5 py-3 text-sm font-bold text-white">+ สร้างกลุ่มใหม่</button></div></div>
 
   return (
     <section className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-500">พบทั้งหมด {groups.length} กลุ่มในเบราว์เซอร์นี้</p>
-        <button type="button" onClick={() => onNavigate('create')} className="self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700">+ สร้างกลุ่มใหม่</button>
+        <button type="button" onClick={() => onNavigate('create')} className="self-start rounded-xl bg-[#17365d] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-300/60 transition hover:bg-[#0f2947]">+ สร้างกลุ่มใหม่</button>
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
         {groups.map((group) => {
@@ -547,7 +547,7 @@ function useActivities(includeImages = false, allowCache = true) {
 }
 
 function LoadingPanel({ message }) {
-  return <div className="grid min-h-72 place-items-center rounded-[24px] border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-blue-600 shadow-sm">{message}</div>
+  return <div className="grid min-h-72 place-items-center rounded-[24px] border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-[#17365d] shadow-sm">{message}</div>
 }
 
 function HistoryPage({ onEdit, onNavigate }) {
@@ -594,7 +594,7 @@ function HistoryPage({ onEdit, onNavigate }) {
   if (!activities.length) {
     return (
       <div className="grid min-h-80 place-items-center rounded-[24px] border border-dashed border-slate-300 bg-white p-8 text-center">
-        <div><p className="font-bold text-slate-800">ยังไม่มีประวัติกิจกรรม</p><button type="button" onClick={() => onNavigate('activity')} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">บันทึกกิจกรรมแรก</button></div>
+        <div><p className="font-bold text-slate-800">ยังไม่มีประวัติกิจกรรม</p><button type="button" onClick={() => onNavigate('activity')} className="mt-5 rounded-xl bg-[#17365d] px-5 py-3 text-sm font-bold text-white">บันทึกกิจกรรมแรก</button></div>
       </div>
     )
   }
@@ -608,7 +608,7 @@ function HistoryPage({ onEdit, onNavigate }) {
       {deleteError && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">{deleteError}</div>}
       <div className="flex flex-col gap-3 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row">
         <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass.replace('mt-2 ', '')} placeholder="ค้นหาชื่อกลุ่ม ชื่อกิจกรรม ผู้บันทึก หรือวันที่" />
-        <button type="button" onClick={reload} className="shrink-0 rounded-xl border border-blue-200 px-5 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">รีเฟรชข้อมูล</button>
+        <button type="button" onClick={reload} className="shrink-0 rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-[#17365d] hover:bg-slate-100">รีเฟรชข้อมูล</button>
       </div>
       {!filteredActivities.length && <div className="rounded-[20px] border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">ไม่พบกิจกรรมที่ตรงกับคำค้นหา</div>}
       {filteredActivities.map((activity) => (
@@ -616,7 +616,7 @@ function HistoryPage({ onEdit, onNavigate }) {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">ขั้นตอนที่ {activity.plcStep}</span>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-[#17365d]">ขั้นตอนที่ {activity.plcStep}</span>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${activity.status === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{activity.status === 'draft' ? 'แบบร่าง' : 'บันทึกแล้ว'}</span>
               </div>
               <h3 className="mt-3 text-lg font-extrabold text-slate-950">{activity.title}</h3>
@@ -625,7 +625,7 @@ function HistoryPage({ onEdit, onNavigate }) {
             </div>
             <div className="flex shrink-0 gap-2">
               <button type="button" onClick={() => toggleDetails(activity)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">{details[activity.activityId] ? 'ซ่อนรายละเอียด' : 'ดูรายละเอียด'}</button>
-              <button type="button" onClick={() => onEdit(details[activity.activityId] || activity)} className="rounded-xl border border-blue-200 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-50">แก้ไข</button>
+              <button type="button" onClick={() => onEdit(details[activity.activityId] || activity)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-[#17365d] transition hover:bg-slate-100">แก้ไข</button>
               <button type="button" onClick={() => handleDeleteActivity(activity)} disabled={Boolean(deletingId)} className="inline-flex items-center gap-1 rounded-xl border border-rose-200 px-4 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60"><Icon name="trash" className="h-4 w-4" />{deletingId === activity.activityId ? 'กำลังลบ...' : 'ลบ'}</button>
             </div>
           </div>
@@ -741,8 +741,8 @@ function printGroupReport(groupName, activities) {
   </section>`
 
   reportWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>รายงาน PLC - ${escapeHtml(groupName)}</title><style>
-    @page{size:A4;margin:10mm 12mm}*{box-sizing:border-box}body{margin:0;background:#e5e7eb;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;color:#000;line-height:1.28;font-size:16pt}.page{width:210mm;min-height:297mm;margin:10px auto;padding:13mm 14mm;background:#fff;page-break-after:always}.page:last-child{page-break-after:auto}.cover{padding-top:25mm}.cover h1{text-align:center;font-size:24pt;line-height:1.2;margin:0}.school{text-align:center;font-size:19pt;margin:8px 0 25px}.cover dl{display:grid;grid-template-columns:48mm 1fr;gap:8px;font-size:17pt}.cover dt{font-weight:bold}.cover dd{margin:0}.cover h2{margin-top:22px;font-size:20pt}.activity-heading{display:flex;justify-content:space-between;border-bottom:1px solid #111;padding-bottom:5px;margin-bottom:6px;font-size:17pt}.activity-table{width:100%;border-collapse:collapse;font-size:14pt;line-height:1.18}.activity-table th,.activity-table td{border:1px solid #333;padding:3px 6px;vertical-align:top}.activity-table td{white-space:pre-wrap}.activity-table th{width:42mm;text-align:center;font-weight:bold}.evidence-title{font-size:16pt;margin:6px 0 3px}.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}.photo{height:29mm;border:1px solid #777;overflow:hidden;position:relative;display:grid;place-items:center;background:#fff;font-size:13pt}.photo img{display:block;width:100%;height:100%;object-fit:contain;object-position:center center}.photo span{position:absolute;bottom:0;left:0;right:0;padding:1px 4px;background:rgba(255,255,255,.86);font-size:11pt}.photo.empty{color:#555;border-radius:7px}.signature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:5px;text-align:center}.signature-row.two{grid-template-columns:1fr 1fr}.signature{font-size:12pt;line-height:1.2}.signature strong{display:block;font-size:12.5pt}.subject-head{width:55%;margin:4px auto 0;text-align:center}.opinion{border-top:1px solid #111;border-bottom:1px solid #111;margin-top:5px;padding:3px 6px;text-align:left;font-size:12pt;line-height:1.2}.opinion>strong{display:block;font-size:13pt}.writing-lines{line-height:1.25;color:#333}.opinion .signature-row{margin-top:1px}.director{text-align:center}.director>.signature{width:58%;margin:1px auto 0}.print-button{position:fixed;right:20px;top:20px;z-index:10;padding:11px 20px;background:#2563eb;color:white;border:0;border-radius:9px;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;font-size:16pt;font-weight:bold;box-shadow:0 4px 14px #0003}@media print{body{background:#fff}.page{margin:0;padding:10mm 12mm;box-shadow:none}.print-button{display:none}}
-    .page{position:relative}.photo{height:60mm}.signature-row,.subject-head,.opinion{break-inside:avoid;page-break-inside:avoid}.report-logo{position:absolute;top:8mm;left:12mm;width:22mm;height:22mm;object-fit:contain;object-position:center}.cover{padding-top:22mm}.cover h1{padding-left:18mm;padding-right:18mm}.cover .school{margin:5px 0 10px}.cover dl{gap:3px;font-size:14pt;margin:0}.cover h2{text-align:center;margin:10px 0 5px;font-size:18pt}.schedule-table{width:100%;border-collapse:collapse;font-size:11.5pt;line-height:1.12}.schedule-table th,.schedule-table td{border:1px solid #222;padding:3px 5px;vertical-align:middle;text-align:center}.schedule-table th:nth-child(1){width:12mm}.schedule-table th:nth-child(2){width:31mm}.schedule-table th:nth-child(3){width:27mm}.schedule-table th:nth-child(4){width:21mm}.schedule-table .schedule-activity{text-align:left;white-space:pre-wrap}.schedule-table thead,.schedule-table tfoot{background:#f1f5f9;font-weight:bold}
+    @page{size:A4;margin:10mm 12mm}*{box-sizing:border-box}body{margin:0;background:#e5e7eb;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;color:#000;line-height:1.28;font-size:16pt}.page{width:210mm;min-height:297mm;margin:10px auto;padding:13mm 14mm;background:#fff;page-break-after:always}.page:last-child{page-break-after:auto}.cover{padding-top:25mm}.cover h1{text-align:center;font-size:24pt;line-height:1.2;margin:0}.school{text-align:center;font-size:19pt;margin:8px 0 25px}.cover dl{display:grid;grid-template-columns:48mm 1fr;gap:8px;font-size:17pt}.cover dt{font-weight:bold}.cover dd{margin:0}.cover h2{margin-top:22px;font-size:20pt}.activity-heading{display:flex;justify-content:space-between;border-bottom:1px solid #111;padding-bottom:5px;margin-bottom:6px;font-size:17pt}.activity-table{width:100%;border-collapse:collapse;font-size:14pt;line-height:1.18}.activity-table th,.activity-table td{border:1px solid #333;padding:3px 6px;vertical-align:top}.activity-table td{white-space:pre-wrap}.activity-table th{width:42mm;text-align:center;font-weight:bold}.evidence-title{font-size:16pt;margin:6px 0 3px}.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}.photo{height:29mm;border:1px solid #777;overflow:hidden;position:relative;display:grid;place-items:center;background:#fff;font-size:13pt}.photo img{display:block;width:100%;height:100%;object-fit:contain;object-position:center center}.photo span{position:absolute;bottom:0;left:0;right:0;padding:1px 4px;background:rgba(255,255,255,.86);font-size:11pt}.photo.empty{color:#555;border-radius:7px}.signature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:5px;text-align:center}.signature-row.two{grid-template-columns:1fr 1fr}.signature{font-size:12pt;line-height:1.2}.signature strong{display:block;font-size:12.5pt}.subject-head{width:55%;margin:4px auto 0;text-align:center}.opinion{border-top:1px solid #111;border-bottom:1px solid #111;margin-top:5px;padding:3px 6px;text-align:left;font-size:12pt;line-height:1.2}.opinion>strong{display:block;font-size:13pt}.writing-lines{line-height:1.25;color:#333}.opinion .signature-row{margin-top:1px}.director{text-align:center}.director>.signature{width:58%;margin:1px auto 0}.print-button{position:fixed;right:20px;top:20px;z-index:10;padding:11px 20px;background:#17365d;color:white;border:0;border-radius:9px;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;font-size:16pt;font-weight:bold;box-shadow:0 4px 14px #0003}@media print{body{background:#fff}.page{margin:0;padding:10mm 12mm;box-shadow:none}.print-button{display:none}}
+    .page{position:relative}.opinion-page{break-before:page;page-break-before:always}.photo{height:60mm}.signature-row,.subject-head,.opinion{break-inside:avoid;page-break-inside:avoid}.report-logo{position:absolute;top:8mm;left:12mm;width:22mm;height:22mm;object-fit:contain;object-position:center}.cover{padding-top:22mm}.cover h1{padding-left:18mm;padding-right:18mm}.cover .school{margin:5px 0 10px}.cover dl{gap:3px;font-size:14pt;margin:0}.cover h2{text-align:center;margin:10px 0 5px;font-size:18pt}.schedule-table{width:100%;border-collapse:collapse;font-size:11.5pt;line-height:1.12}.schedule-table th,.schedule-table td{border:1px solid #222;padding:3px 5px;vertical-align:middle;text-align:center}.schedule-table th:nth-child(1){width:12mm}.schedule-table th:nth-child(2){width:31mm}.schedule-table th:nth-child(3){width:27mm}.schedule-table th:nth-child(4){width:21mm}.schedule-table .schedule-activity{text-align:left;white-space:pre-wrap}.schedule-table thead,.schedule-table tfoot{background:#f1f5f9;font-weight:bold}
   </style></head><body><button class="print-button" onclick="window.print()">พิมพ์ / บันทึก PDF</button>${cover}${activityPages}</body></html>`)
   reportWindow.document.close()
   reportWindow.focus()
@@ -812,9 +812,9 @@ function ReportsPage() {
           <article key={groupName} className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
             <h3 className="text-lg font-extrabold text-slate-950">{groupName}</h3>
             <p className="mt-2 text-sm text-slate-500">บันทึกแล้ว {activityCount} กิจกรรม · ครอบคลุม {completedSteps} จาก 7 ขั้นตอน</p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(100, completedSteps / 7 * 100)}%` }} /></div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#17365d]" style={{ width: `${Math.min(100, completedSteps / 7 * 100)}%` }} /></div>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <button type="button" onClick={() => { setExportError(''); if (!printGroupReport(groupName, groupActivities)) setExportError('เบราว์เซอร์ปิดกั้นหน้ารายงาน กรุณาอนุญาต Pop-up แล้วลองใหม่') }} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700">พิมพ์ / บันทึก PDF</button>
+              <button type="button" onClick={() => { setExportError(''); if (!printGroupReport(groupName, groupActivities)) setExportError('เบราว์เซอร์ปิดกั้นหน้ารายงาน กรุณาอนุญาต Pop-up แล้วลองใหม่') }} className="rounded-xl bg-[#17365d] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-300/60 transition hover:bg-[#0f2947]">พิมพ์ / บันทึก PDF</button>
               <button type="button" onClick={() => downloadActivitiesCsv(groupName, groupActivities)} className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100">ดาวน์โหลด CSV</button>
               <button type="button" onClick={() => handleDeleteReport(groupName, groupActivities)} disabled={Boolean(deletingGroup)} className="inline-flex items-center justify-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-bold text-rose-600 transition hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60"><Icon name="trash" className="h-4 w-4" />{deletingGroup === groupName ? 'กำลังลบ...' : 'ลบรายงาน'}</button>
             </div>
@@ -890,8 +890,8 @@ function EmptyPage({ activePage, onNavigate }) {
       {activePage === 'reports' && (
         <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {['ข้อมูลกลุ่ม', 'กิจกรรม 7 ขั้นตอน', 'รูปภาพหลักฐาน', 'ตรวจสอบและส่งออก'].map((item, index) => (
-            <div key={item} className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-              <span className="text-xs font-bold text-blue-600">ขั้นที่ {index + 1}</span>
+            <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <span className="text-xs font-bold text-[#17365d]">ขั้นที่ {index + 1}</span>
               <p className="mt-1 font-semibold text-slate-800">{item}</p>
             </div>
           ))}
@@ -899,12 +899,12 @@ function EmptyPage({ activePage, onNavigate }) {
       )}
       <div className="grid min-h-[360px] place-items-center rounded-[22px] border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
         <div className="max-w-lg">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-blue-100 text-blue-700">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-slate-100 text-[#17365d]">
             <Icon name={content.icon} className="h-8 w-8" />
           </div>
           <h3 className="mt-5 text-xl font-bold text-slate-900">{content.title}</h3>
           <p className="mt-2 leading-7 text-slate-500">{content.description}</p>
-          <button type="button" onClick={() => activePage === 'activity' ? setShowActivityForm(true) : onNavigate(destinations[activePage])} className="mt-6 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700">
+          <button type="button" onClick={() => activePage === 'activity' ? setShowActivityForm(true) : onNavigate(destinations[activePage])} className="mt-6 rounded-xl bg-[#17365d] px-5 py-3 font-semibold text-white shadow-lg shadow-slate-300/60 transition hover:-translate-y-0.5 hover:bg-[#0f2947]">
             {content.button}
           </button>
         </div>
@@ -927,15 +927,15 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3f6fb] text-slate-800">
-      <button type="button" aria-label="เปิดเมนู" onClick={() => setMenuOpen(true)} className="fixed left-4 top-4 z-40 grid h-11 w-11 place-items-center rounded-xl bg-blue-700 text-white shadow-lg lg:hidden">
+    <div className="min-h-screen bg-[#f5f6f8] text-slate-800">
+      <button type="button" aria-label="เปิดเมนู" onClick={() => setMenuOpen(true)} className="fixed left-4 top-4 z-40 grid h-11 w-11 place-items-center rounded-xl bg-[#17365d] text-white shadow-lg lg:hidden">
         <Icon name="menu" />
       </button>
 
       {menuOpen && <button type="button" aria-label="ปิดเมนู" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" />}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[270px] flex-col bg-gradient-to-b from-[#2658dc] to-[#1f449b] px-5 py-6 text-white shadow-2xl transition-transform duration-300 lg:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <button type="button" aria-label="ปิดเมนู" onClick={() => setMenuOpen(false)} className="absolute right-4 top-4 text-blue-100 lg:hidden">
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[270px] flex-col bg-gradient-to-b from-[#17365d] to-[#0b1f36] px-5 py-6 text-white shadow-2xl transition-transform duration-300 lg:translate-x-0 ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <button type="button" aria-label="ปิดเมนู" onClick={() => setMenuOpen(false)} className="absolute right-4 top-4 text-slate-200 lg:hidden">
           <Icon name="close" />
         </button>
 
@@ -945,13 +945,13 @@ function App() {
           </div>
           <div>
             <h1 className="text-xl font-extrabold leading-tight">HRP PLC<br />Online</h1>
-            <p className="mt-1 text-[11px] leading-tight text-blue-100">ระบบชุมชนแห่งการเรียนรู้<br />ทางวิชาชีพ</p>
+            <p className="mt-1 text-[11px] leading-tight text-slate-200">ระบบชุมชนแห่งการเรียนรู้<br />ทางวิชาชีพ</p>
           </div>
         </div>
 
         <nav className="mt-9 space-y-2" aria-label="เมนูหลัก">
           {navItems.map((item) => (
-            <button key={item.id} type="button" onClick={() => navigate(item.id)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition ${activePage === item.id ? 'bg-white/18 text-white shadow-sm ring-1 ring-white/10' : 'text-blue-50 hover:bg-white/10'}`}>
+            <button key={item.id} type="button" onClick={() => navigate(item.id)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left text-sm font-semibold transition ${activePage === item.id ? 'bg-white/18 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-100 hover:bg-white/10'}`}>
               <Icon name={item.icon} className="h-5 w-5 shrink-0" />
               <span>{item.label}</span>
             </button>
@@ -960,7 +960,7 @@ function App() {
 
         <div className="mt-auto rounded-2xl border border-white/10 bg-white/10 p-4">
           <p className="text-sm font-bold">รายงาน PLC</p>
-          <p className="mt-1 text-xs leading-5 text-blue-100">พิมพ์รายงานได้ตามจำนวนกิจกรรมที่บันทึก พร้อมรูปหลักฐานและส่วนลงนาม</p>
+          <p className="mt-1 text-xs leading-5 text-slate-200">พิมพ์รายงานได้ตามจำนวนกิจกรรมที่บันทึก พร้อมรูปหลักฐานและส่วนลงนาม</p>
         </div>
       </aside>
 
@@ -972,7 +972,7 @@ function App() {
               <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
             </div>
             <div className="flex items-center gap-3 self-start rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:self-auto">
-              <div className="grid h-11 w-11 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">ส</div>
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 font-bold text-[#17365d]">ส</div>
               <div>
                 <p className="text-sm font-bold text-slate-900">คุณครูสุทธิดา</p>
                 <p className="text-xs text-slate-500">ครูผู้ใช้งานระบบ</p>
@@ -982,17 +982,17 @@ function App() {
 
           {activePage === 'dashboard' ? (
             <>
-              <section className="relative overflow-hidden rounded-[26px] bg-gradient-to-r from-[#2d6eea] to-[#58a5f7] p-7 text-white shadow-[0_18px_40px_rgba(37,99,235,0.2)] sm:p-8">
+              <section className="relative overflow-hidden rounded-[26px] bg-gradient-to-r from-[#17365d] to-[#274f78] p-7 text-white shadow-[0_18px_40px_rgba(15,41,71,0.22)] sm:p-8">
                 <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/10" />
-                <div className="absolute bottom-[-90px] right-40 h-48 w-48 rounded-full bg-blue-300/20" />
+                <div className="absolute bottom-[-90px] right-40 h-48 w-48 rounded-full bg-white/10" />
                 <div className="relative max-w-3xl">
                   <h3 className="text-2xl font-extrabold sm:text-3xl">สวัสดี คุณครูสุทธิดา <span aria-hidden="true">👋</span></h3>
-                  <p className="mt-2 text-sm leading-7 text-blue-50 sm:text-base">สร้างกลุ่ม PLC บันทึกกิจกรรมตามกระบวนการ 7 ขั้นตอน แนบรูปหลักฐาน และส่งออกรายงาน PDF ได้ในระบบเดียว</p>
+                  <p className="mt-2 text-sm leading-7 text-slate-100 sm:text-base">สร้างกลุ่ม PLC บันทึกกิจกรรมตามกระบวนการ 7 ขั้นตอน แนบรูปหลักฐาน และส่งออกรายงาน PDF ได้ในระบบเดียว</p>
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <button type="button" onClick={() => navigate('create')} className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-blue-700 shadow-md transition hover:-translate-y-0.5">
+                    <button type="button" onClick={() => navigate('create')} className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#17365d] shadow-md transition hover:-translate-y-0.5">
                       <Icon name="plus" /> สร้างกลุ่ม PLC
                     </button>
-                    <button type="button" onClick={() => navigate('activity')} className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-blue-700 shadow-md transition hover:-translate-y-0.5">
+                    <button type="button" onClick={() => navigate('activity')} className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-[#17365d] shadow-md transition hover:-translate-y-0.5">
                       <Icon name="note" /> บันทึกกิจกรรม
                     </button>
                   </div>
@@ -1016,7 +1016,7 @@ function App() {
                       <h3 className="text-xl font-extrabold text-slate-950">กลุ่ม PLC ล่าสุด</h3>
                       <p className="mt-1 text-sm text-slate-500">ติดตามความก้าวหน้าและส่งออกรายงาน</p>
                     </div>
-                    <button type="button" onClick={() => navigate('groups')} className="text-sm font-bold text-blue-600 hover:text-blue-800">ดูทั้งหมด</button>
+                    <button type="button" onClick={() => navigate('groups')} className="text-sm font-bold text-[#17365d] hover:text-[#0b1f36]">ดูทั้งหมด</button>
                   </div>
                   {localGroups.length ? (
                     <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -1045,12 +1045,12 @@ function App() {
                   <ol className="mt-5 space-y-3">
                     {plcSteps.map((step, index) => (
                       <li key={step} className="flex items-center gap-3 text-sm text-slate-600">
-                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blue-50 text-xs font-extrabold text-blue-700">{index + 1}</span>
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-extrabold text-[#17365d]">{index + 1}</span>
                         <span>{step}</span>
                       </li>
                     ))}
                   </ol>
-                  <button type="button" onClick={() => navigate('reports')} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800">ดูรูปแบบรายงาน <Icon name="arrow" className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => navigate('reports')} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#17365d] hover:text-[#0b1f36]">ดูรูปแบบรายงาน <Icon name="arrow" className="h-4 w-4" /></button>
                 </article>
               </section>
             </>
