@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import logoUrl from '../Logo.jpg'
-import { checkGoogleAccess, getActivity, isGoogleAppsScriptConfigured, listActivities, saveActivity } from './services/googleAppsScript'
-import { clearGoogleAuth, getGoogleClientId, getGoogleUser, isGoogleLoginConfigured, loadGoogleIdentityServices, saveGoogleCredential } from './services/googleAuth'
+import { isGoogleAppsScriptConfigured, listActivities, saveActivity } from './services/googleAppsScript'
 
 const Icon = ({ name, className = 'h-5 w-5' }) => {
   const paths = {
@@ -99,7 +98,7 @@ function FieldLabel({ children, required = false, hint }) {
   )
 }
 
-function ActivityForm({ onCancel, initialActivity = null, onSaved, currentUser }) {
+function ActivityForm({ onCancel, initialActivity = null, onSaved }) {
   const [files, setFiles] = useState([])
   const [savedActivityId, setSavedActivityId] = useState(initialActivity?.activityId || '')
   const [saveState, setSaveState] = useState({ type: 'idle', message: '' })
@@ -165,7 +164,7 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved, currentUser }
           {!isGoogleAppsScriptConfigured() && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-800">
               <strong>ยังไม่ได้เชื่อม Google Apps Script</strong><br />
-              ฟอร์มพร้อมใช้งานแล้ว แต่ต้องเพิ่ม Web App URL ลงในไฟล์ <code className="rounded bg-amber-100 px-1.5 py-0.5">.env.local</code> ก่อนบันทึกจริง
+              ฟอร์มพร้อมใช้งานแล้ว แต่ต้องเพิ่ม Web App URL และ App Key ลงในไฟล์ <code className="rounded bg-amber-100 px-1.5 py-0.5">.env.local</code> ก่อนบันทึกจริง
             </div>
           )}
           <section>
@@ -274,7 +273,7 @@ function ActivityForm({ onCancel, initialActivity = null, onSaved, currentUser }
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <FieldLabel required>ผู้บันทึกกิจกรรม</FieldLabel>
-                <input required name="recorder" className={inputClass} defaultValue={initialActivity?.recorder || currentUser?.name || ''} />
+                <input required name="recorder" className={inputClass} defaultValue={initialActivity?.recorder || 'คุณครูสุทธิดา'} />
               </div>
               <div>
                 <FieldLabel required>จำนวนผู้เข้าร่วม</FieldLabel>
@@ -537,24 +536,16 @@ function LoadingPanel({ message }) {
 }
 
 function HistoryPage({ onEdit, onNavigate }) {
-  const { activities, loading, error, notice, reload } = useActivities()
+  const { activities, loading, error, notice, reload } = useActivities(true)
   const [query, setQuery] = useState('')
   const [details, setDetails] = useState({})
-  const [detailState, setDetailState] = useState({ activityId: '', error: '' })
 
-  const toggleDetails = async (activity) => {
+  const toggleDetails = (activity) => {
     if (details[activity.activityId]) {
       setDetails((current) => ({ ...current, [activity.activityId]: null }))
       return
     }
-    setDetailState({ activityId: activity.activityId, error: '' })
-    try {
-      const fullActivity = await getActivity(activity.activityId)
-      setDetails((current) => ({ ...current, [activity.activityId]: fullActivity }))
-      setDetailState({ activityId: '', error: '' })
-    } catch (detailError) {
-      setDetailState({ activityId: activity.activityId, error: detailError.message })
-    }
+    setDetails((current) => ({ ...current, [activity.activityId]: activity }))
   }
 
   if (loading) return <LoadingPanel message="กำลังโหลดประวัติกิจกรรม..." />
@@ -603,8 +594,6 @@ function HistoryPage({ onEdit, onNavigate }) {
               <button type="button" onClick={() => onEdit(details[activity.activityId] || activity)} className="rounded-xl border border-blue-200 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-50">แก้ไข</button>
             </div>
           </div>
-          {detailState.activityId === activity.activityId && !detailState.error && <p className="mt-5 text-sm font-semibold text-blue-600">กำลังโหลดรายละเอียดและรูปหลักฐาน...</p>}
-          {detailState.activityId === activity.activityId && detailState.error && <p className="mt-5 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{detailState.error}</p>}
           {details[activity.activityId] && (
             <div className="mt-5 space-y-5 border-t border-slate-200 pt-5">
               <dl className="grid gap-4 text-sm md:grid-cols-2">
@@ -760,7 +749,7 @@ function ReportsPage() {
   )
 }
 
-function EmptyPage({ activePage, onNavigate, currentUser }) {
+function EmptyPage({ activePage, onNavigate }) {
   const [showActivityForm, setShowActivityForm] = useState(false)
   const [editingActivity, setEditingActivity] = useState(null)
 
@@ -774,14 +763,14 @@ function EmptyPage({ activePage, onNavigate, currentUser }) {
   }
 
   if (activePage === 'history' && editingActivity) {
-    return <ActivityForm initialActivity={editingActivity} currentUser={currentUser} onCancel={() => setEditingActivity(null)} onSaved={() => setEditingActivity(null)} />
+    return <ActivityForm initialActivity={editingActivity} onCancel={() => setEditingActivity(null)} onSaved={() => setEditingActivity(null)} />
   }
 
   if (activePage === 'history') return <HistoryPage onEdit={setEditingActivity} onNavigate={onNavigate} />
   if (activePage === 'reports') return <ReportsPage />
 
   if (activePage === 'activity' && showActivityForm) {
-    return <ActivityForm currentUser={currentUser} onCancel={() => setShowActivityForm(false)} />
+    return <ActivityForm onCancel={() => setShowActivityForm(false)} />
   }
 
   const content = {
@@ -847,66 +836,9 @@ function EmptyPage({ activePage, onNavigate, currentUser }) {
   )
 }
 
-function LoginScreen({ onLogin }) {
-  const buttonRef = useRef(null)
-  const [state, setState] = useState({ loading: true, error: '' })
-
-  useEffect(() => {
-    if (!isGoogleLoginConfigured()) {
-      setState({ loading: false, error: 'ยังไม่ได้ตั้งค่า VITE_GOOGLE_CLIENT_ID สำหรับเว็บไซต์' })
-      return undefined
-    }
-
-    let cancelled = false
-    loadGoogleIdentityServices().then((google) => {
-      if (cancelled || !buttonRef.current) return
-      google.accounts.id.initialize({
-        client_id: getGoogleClientId(),
-        callback: async (response) => {
-          try {
-            setState({ loading: true, error: '' })
-            const user = saveGoogleCredential(response.credential)
-            await checkGoogleAccess()
-            onLogin(user)
-          } catch (error) {
-            clearGoogleAuth()
-            setState({ loading: false, error: error.message })
-          }
-        },
-        auto_select: false,
-        cancel_on_tap_outside: false,
-      })
-      buttonRef.current.replaceChildren()
-      google.accounts.id.renderButton(buttonRef.current, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'th', width: 300 })
-      setState({ loading: false, error: '' })
-    }).catch((error) => {
-      if (!cancelled) setState({ loading: false, error: error.message })
-    })
-
-    return () => { cancelled = true }
-  }, [onLogin])
-
-  return (
-    <main className="grid min-h-screen place-items-center bg-gradient-to-br from-blue-50 via-white to-indigo-100 p-5">
-      <section className="w-full max-w-md rounded-[28px] border border-blue-100 bg-white p-8 text-center shadow-[0_24px_70px_rgba(37,99,235,0.16)] sm:p-10">
-        <div className="mx-auto grid h-24 w-24 place-items-center overflow-hidden rounded-[24px] bg-white p-2 shadow-lg ring-1 ring-slate-100">
-          <img src={logoUrl} alt="ตราโรงเรียนหาดใหญ่รัฐประชาสรรค์" className="h-full w-full object-contain" />
-        </div>
-        <h1 className="mt-6 text-3xl font-extrabold text-slate-950">HRP PLC Online</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">เข้าสู่ระบบด้วยบัญชี Google ที่ได้รับอนุญาต เพื่อบันทึกกิจกรรม ดูประวัติ และส่งออกรายงาน</p>
-        <div className="mt-7 flex min-h-11 justify-center" ref={buttonRef} />
-        {state.loading && <p className="mt-4 text-sm font-semibold text-blue-600">กำลังโหลด Google Login...</p>}
-        {state.error && <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{state.error}</p>}
-        <p className="mt-7 text-xs leading-5 text-slate-400">หากบัญชีของคุณยังไม่ได้รับสิทธิ์ กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มอีเมลใน ALLOWED_EMAILS</p>
-      </section>
-    </main>
-  )
-}
-
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState(getGoogleUser)
   const [title, subtitle] = pageMeta[activePage]
   const localGroups = readLocalGroups()
   const dashboardStats = stats.map((item, index) => index === 0 ? { ...item, value: String(localGroups.length) } : item)
@@ -916,20 +848,6 @@ function App() {
     setMenuOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
-
-  const handleLogin = useCallback((user) => setCurrentUser(user), [])
-  const handleLogout = () => {
-    clearGoogleAuth()
-    setCurrentUser(null)
-  }
-
-  useEffect(() => {
-    const handleExpired = () => setCurrentUser(null)
-    window.addEventListener('hrp-auth-expired', handleExpired)
-    return () => window.removeEventListener('hrp-auth-expired', handleExpired)
-  }, [])
-
-  if (!currentUser) return <LoginScreen onLogin={handleLogin} />
 
   return (
     <div className="min-h-screen bg-[#f3f6fb] text-slate-800">
@@ -977,10 +895,10 @@ function App() {
               <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
             </div>
             <div className="flex items-center gap-3 self-start rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_28px_rgba(15,23,42,0.06)] sm:self-auto">
-              {currentUser.picture ? <img src={currentUser.picture} alt="รูปโปรไฟล์" className="h-11 w-11 rounded-full object-cover" referrerPolicy="no-referrer" /> : <div className="grid h-11 w-11 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">{currentUser.name.slice(0, 1)}</div>}
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-blue-100 font-bold text-blue-700">ส</div>
               <div>
-                <p className="max-w-44 truncate text-sm font-bold text-slate-900">{currentUser.name}</p>
-                <button type="button" onClick={handleLogout} className="text-xs font-semibold text-slate-500 hover:text-rose-600">ออกจากระบบ</button>
+                <p className="text-sm font-bold text-slate-900">คุณครูสุทธิดา</p>
+                <p className="text-xs text-slate-500">ครูผู้ใช้งานระบบ</p>
               </div>
             </div>
           </header>
@@ -991,7 +909,7 @@ function App() {
                 <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/10" />
                 <div className="absolute bottom-[-90px] right-40 h-48 w-48 rounded-full bg-blue-300/20" />
                 <div className="relative max-w-3xl">
-                  <h3 className="text-2xl font-extrabold sm:text-3xl">สวัสดี {currentUser.name} <span aria-hidden="true">👋</span></h3>
+                  <h3 className="text-2xl font-extrabold sm:text-3xl">สวัสดี คุณครูสุทธิดา <span aria-hidden="true">👋</span></h3>
                   <p className="mt-2 text-sm leading-7 text-blue-50 sm:text-base">สร้างกลุ่ม PLC บันทึกกิจกรรมตามกระบวนการ 7 ขั้นตอน แนบรูปหลักฐาน และส่งออกรายงาน PDF ได้ในระบบเดียว</p>
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button type="button" onClick={() => navigate('create')} className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-blue-700 shadow-md transition hover:-translate-y-0.5">
@@ -1060,7 +978,7 @@ function App() {
               </section>
             </>
           ) : (
-            <EmptyPage activePage={activePage} onNavigate={navigate} currentUser={currentUser} />
+            <EmptyPage activePage={activePage} onNavigate={navigate} />
           )}
         </div>
       </main>

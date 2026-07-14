@@ -20,10 +20,10 @@
 6. กด Save
 7. เลือกฟังก์ชัน `setupProject` จากแถบด้านบน แล้วกด Run
 8. อนุญาตสิทธิ์เข้าถึง Google Sheet และ Google Drive
-9. เปิด `Executions` หรือ Execution log แล้วเก็บค่า `spreadsheetUrl` และ `rootFolderUrl`
-10. เปิด `Project Settings` > `Script Properties` แล้วเพิ่ม:
-   - `GOOGLE_CLIENT_ID` = Client ID ของ OAuth Web application
-   - `ALLOWED_EMAILS` = อีเมลที่อนุญาต คั่นด้วยจุลภาค เช่น `teacher1@gmail.com,teacher2@gmail.com`
+9. เปิด `Executions` หรือ Execution log แล้วเก็บค่า:
+   - `spreadsheetUrl`
+   - `rootFolderUrl`
+   - `appKey`
 
 ถ้าเปิด Apps Script จากใน Google Sheet ระบบจะใช้ชีตที่เปิดอยู่และสร้างแท็บฐานข้อมูลภายในไฟล์นั้น หากเป็น Apps Script แบบ standalone ระบบจึงจะสร้าง Google Sheet ชื่อ `HRP PLC Database` ใหม่ ส่วนโฟลเดอร์ Drive ชื่อ `HRP PLC Uploads` จะถูกสร้างให้อัตโนมัติ
 
@@ -43,7 +43,7 @@
 
 ```env
 VITE_GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com
+VITE_GOOGLE_APPS_SCRIPT_KEY=APP_KEY_FROM_SETUP_PROJECT
 ```
 
 จากนั้นปิดและเปิด dev server ใหม่:
@@ -61,11 +61,9 @@ npm.cmd run dev
 5. ตรวจแถวใหม่ในชีต `activities`
 6. ตรวจรูปใน `HRP PLC Uploads` และข้อมูลรูปในชีต `activity_images`
 
-## Google Login และความปลอดภัย
+## ความปลอดภัย
 
-สร้าง OAuth Client ID ชนิด `Web application` ใน Google Cloud Console แล้วเพิ่ม URL ที่ใช้เปิดเว็บไซต์จริงใน `Authorized JavaScript origins` เช่น URL ของ GitHub Pages และ `http://localhost:5173` สำหรับทดสอบในเครื่อง ค่า Client ID เดียวกันต้องอยู่ทั้งใน `VITE_GOOGLE_CLIENT_ID` และ Script Property `GOOGLE_CLIENT_ID`
-
-Apps Script จะตรวจลายเซ็นและอายุของ Google ID token รวมถึงตรวจอีเมลกับ `ALLOWED_EMAILS` ทุกครั้งก่อนอ่านหรือบันทึกข้อมูล การเพิ่มหรือลบอีเมลในภายหลังไม่ทำให้ข้อมูลเดิมใน Google Sheet และ Google Drive เปลี่ยนแปลง
+App Key ช่วยป้องกันการเรียก API โดยไม่ทราบค่า แต่ไม่ใช่ข้อมูลลับที่ซ่อนได้อย่างสมบูรณ์ เพราะค่าที่ใช้สร้างเว็บ Vite สามารถตรวจดูได้จากเบราว์เซอร์ ระบบรุ่นนี้จึงเหมาะสำหรับใช้งานภายในกลุ่มที่ไว้ใจกัน ไม่ควรใช้เก็บข้อมูลอ่อนไหวหรือเผยแพร่ App Key ในเอกสารสาธารณะ
 
 ไฟล์ใน Drive จะไม่ถูกตั้งเป็นสาธารณะโดยสคริปต์นี้ และยังคงใช้สิทธิ์ของเจ้าของโฟลเดอร์
 

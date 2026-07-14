@@ -36,7 +36,7 @@ jobs:
       - name: Build
         env:
           VITE_GOOGLE_APPS_SCRIPT_URL: ${{ secrets.VITE_GOOGLE_APPS_SCRIPT_URL }}
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_APPS_SCRIPT_KEY: ${{ secrets.VITE_GOOGLE_APPS_SCRIPT_KEY }}
         run: npm run build
 
       - name: Configure Pages

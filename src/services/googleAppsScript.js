@@ -1,5 +1,5 @@
 const WEB_APP_URL = (import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || '').trim()
-import { getGoogleIdToken } from './googleAuth'
+const WEB_APP_KEY = (import.meta.env.VITE_GOOGLE_APPS_SCRIPT_KEY || '').trim()
 
 const readAsDataUrl = (blob) => new Promise((resolve, reject) => {
   const reader = new FileReader()
@@ -56,18 +56,12 @@ async function prepareImage(file, caption, sortOrder) {
 }
 
 export function isGoogleAppsScriptConfigured() {
-  return Boolean(WEB_APP_URL)
+  return Boolean(WEB_APP_URL && WEB_APP_KEY)
 }
 
 async function postToWebApp(payload, fallbackMessage) {
-  if (!WEB_APP_URL) {
-    throw new Error('ยังไม่ได้ตั้งค่า Google Apps Script กรุณาเพิ่ม Web App URL ในไฟล์ .env.local')
-  }
-
-  const idToken = getGoogleIdToken()
-  if (!idToken) {
-    window.dispatchEvent(new Event('hrp-auth-expired'))
-    throw new Error('เซสชัน Google หมดอายุ กรุณาเข้าสู่ระบบใหม่')
+  if (!WEB_APP_URL || !WEB_APP_KEY) {
+    throw new Error('ยังไม่ได้ตั้งค่า Google Apps Script กรุณาเพิ่ม URL และ App Key ในไฟล์ .env.local')
   }
 
   let response
@@ -76,7 +70,7 @@ async function postToWebApp(payload, fallbackMessage) {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ ...payload, idToken }),
+      body: JSON.stringify({ ...payload, appKey: WEB_APP_KEY }),
     })
   } catch {
     throw new Error('เชื่อมต่อ Google Apps Script ไม่สำเร็จ กรุณาตรวจ Web App URL และสิทธิ์การเข้าถึง')
@@ -118,14 +112,4 @@ export async function saveActivity({ fields, files, captions, status, activityId
 export async function listActivities({ includeImages = false } = {}) {
   const result = await postToWebApp({ action: 'listActivities', includeImages }, 'ไม่สามารถโหลดประวัติกิจกรรมได้')
   return Array.isArray(result.activities) ? result.activities : []
-}
-
-export async function getActivity(activityId) {
-  const result = await postToWebApp({ action: 'getActivity', activityId }, 'ไม่สามารถโหลดรายละเอียดกิจกรรมได้')
-  return result.activity
-}
-
-export async function checkGoogleAccess() {
-  const result = await postToWebApp({ action: 'checkAccess' }, 'บัญชี Google นี้ไม่มีสิทธิ์ใช้งานระบบ')
-  return result.user
 }
