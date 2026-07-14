@@ -113,3 +113,9 @@ export async function listActivities({ includeImages = false } = {}) {
   const result = await postToWebApp({ action: 'listActivities', includeImages }, 'ไม่สามารถโหลดประวัติกิจกรรมได้')
   return Array.isArray(result.activities) ? result.activities : []
 }
+
+export async function deleteActivities(activityIds) {
+  const ids = Array.isArray(activityIds) ? activityIds.filter(Boolean) : [activityIds].filter(Boolean)
+  if (!ids.length) throw new Error('ไม่พบกิจกรรมที่ต้องการลบ')
+  return postToWebApp({ action: 'deleteActivities', activityIds: ids }, 'ไม่สามารถลบกิจกรรมได้')
+}

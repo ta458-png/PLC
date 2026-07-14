@@ -92,6 +92,7 @@ function doPost(event) {
     }
     if (payload.action === 'saveActivity') return json_(saveActivity_(payload))
     if (payload.action === 'listActivities') return json_(listActivities_(payload.includeImages === true))
+    if (payload.action === 'deleteActivities') return json_(deleteActivities_(payload))
     throw new Error('ไม่รองรับคำสั่งนี้')
   } catch (error) {
     console.error(error.stack || error)
@@ -274,6 +275,66 @@ function saveActivity_(payload) {
       try { file.setTrashed(true) } catch (cleanupError) { console.error(cleanupError) }
     })
     throw error
+  } finally {
+    lock.releaseLock()
+  }
+}
+
+function deleteActivities_(payload) {
+  const activityIds = [...new Set((Array.isArray(payload.activityIds) ? payload.activityIds : [payload.activityId])
+    .map(clean_)
+    .filter(Boolean))]
+  if (!activityIds.length) throw new Error('ไม่พบกิจกรรมที่ต้องการลบ')
+
+  const config = getConfig_()
+  if (!config.spreadsheetId || !config.rootFolderId) {
+    throw new Error('ยังไม่ได้ตั้งค่าระบบ กรุณารัน setupProject() ก่อน Deploy')
+  }
+
+  const lock = LockService.getScriptLock()
+  if (!lock.tryLock(30000)) throw new Error('ระบบกำลังจัดการข้อมูลอื่นอยู่ กรุณาลองอีกครั้ง')
+
+  try {
+    const spreadsheet = SpreadsheetApp.openById(config.spreadsheetId)
+    const activitiesSheet = ensureSheet_(spreadsheet, SHEET_NAMES.ACTIVITIES, HEADERS.activities)
+    const imagesSheet = ensureSheet_(spreadsheet, SHEET_NAMES.IMAGES, HEADERS.activity_images)
+    const idSet = new Set(activityIds)
+    const activityRows = activitiesSheet.getLastRow() >= 2
+      ? activitiesSheet.getRange(2, 1, activitiesSheet.getLastRow() - 1, HEADERS.activities.length).getValues()
+      : []
+    const matchedActivities = activityRows
+      .map((row, index) => ({ row, sheetRow: index + 2 }))
+      .filter(({ row }) => idSet.has(clean_(row[0])))
+
+    if (!matchedActivities.length) throw new Error('ไม่พบกิจกรรมนี้ในฐานข้อมูล')
+
+    if (imagesSheet.getLastRow() >= 2) {
+      const imageRows = imagesSheet.getRange(2, 1, imagesSheet.getLastRow() - 1, HEADERS.activity_images.length).getValues()
+      for (let index = imageRows.length - 1; index >= 0; index -= 1) {
+        const row = imageRows[index]
+        if (!idSet.has(clean_(row[1]))) continue
+        try { DriveApp.getFileById(clean_(row[2])).setTrashed(true) } catch (error) { console.error(error.message) }
+        imagesSheet.deleteRow(index + 2)
+      }
+    }
+
+    const rootFolder = DriveApp.getFolderById(config.rootFolderId)
+    matchedActivities.forEach(({ row }) => {
+      const groupFolders = rootFolder.getFoldersByName(safeFolderName_(row[3]))
+      if (!groupFolders.hasNext()) return
+      const activityFolder = findActivityFolder_(groupFolders.next(), clean_(row[0]))
+      if (activityFolder) activityFolder.setTrashed(true)
+    })
+
+    matchedActivities
+      .sort((a, b) => b.sheetRow - a.sheetRow)
+      .forEach(({ sheetRow }) => activitiesSheet.deleteRow(sheetRow))
+
+    return {
+      ok: true,
+      deletedCount: matchedActivities.length,
+      message: `ลบข้อมูล ${matchedActivities.length} กิจกรรมเรียบร้อยแล้ว`,
+    }
   } finally {
     lock.releaseLock()
   }

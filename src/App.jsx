@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import logoUrl from '../Logo.jpg'
-import { isGoogleAppsScriptConfigured, listActivities, saveActivity } from './services/googleAppsScript'
+import { deleteActivities, isGoogleAppsScriptConfigured, listActivities, saveActivity } from './services/googleAppsScript'
 
 const Icon = ({ name, className = 'h-5 w-5' }) => {
   const paths = {
@@ -87,6 +87,11 @@ function mergeActivities(primary, fallback) {
 function cacheActivity(activity) {
   const activities = readCachedActivities().filter((item) => item.activityId !== activity.activityId)
   writeCachedActivities(mergeActivities([activity], activities))
+}
+
+function removeCachedActivities(activityIds) {
+  const idSet = new Set(activityIds)
+  writeCachedActivities(readCachedActivities().filter((activity) => !idSet.has(activity.activityId)))
 }
 
 function FieldLabel({ children, required = false, hint }) {
@@ -468,9 +473,16 @@ function readLocalGroups() {
 }
 
 function GroupsPage({ onNavigate }) {
-  const [groups] = useState(readLocalGroups)
+  const [groups, setGroups] = useState(readLocalGroups)
 
-  if (!groups.length) return null
+  const handleDeleteGroup = (group) => {
+    if (!window.confirm(`ต้องการลบกลุ่ม “${group.groupName}” ออกจากเบราว์เซอร์นี้ใช่หรือไม่?\n\nประวัติกิจกรรมที่บันทึกใน Google Sheet จะยังคงอยู่`)) return
+    const nextGroups = groups.filter((item) => item.groupId !== group.groupId)
+    localStorage.setItem('hrp-plc-groups', JSON.stringify(nextGroups))
+    setGroups(nextGroups)
+  }
+
+  if (!groups.length) return <div className="grid min-h-72 place-items-center rounded-[24px] border border-dashed border-slate-300 bg-white p-8 text-center"><div><p className="font-bold text-slate-800">ยังไม่มีกลุ่ม PLC ในเบราว์เซอร์นี้</p><button type="button" onClick={() => onNavigate('create')} className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">+ สร้างกลุ่มใหม่</button></div></div>
 
   return (
     <section className="space-y-5">
@@ -488,7 +500,10 @@ function GroupsPage({ onNavigate }) {
                   <h3 className="text-lg font-extrabold text-slate-950">{group.groupName}</h3>
                   <p className="mt-1 text-sm text-slate-500">ปีการศึกษา {group.academicYear} · ภาคเรียน {group.semester}</p>
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">กำลังดำเนินการ</span>
+                <div className="flex flex-col items-end gap-2">
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">กำลังดำเนินการ</span>
+                  <button type="button" onClick={() => handleDeleteGroup(group)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50"><Icon name="trash" className="h-4 w-4" />ลบกลุ่ม</button>
+                </div>
               </div>
               <div className="mt-5 rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold text-slate-400">ประเด็นพัฒนา</p>
@@ -539,6 +554,8 @@ function HistoryPage({ onEdit, onNavigate }) {
   const { activities, loading, error, notice, reload } = useActivities(true)
   const [query, setQuery] = useState('')
   const [details, setDetails] = useState({})
+  const [deletingId, setDeletingId] = useState('')
+  const [deleteError, setDeleteError] = useState('')
 
   const toggleDetails = (activity) => {
     if (details[activity.activityId]) {
@@ -546,6 +563,22 @@ function HistoryPage({ onEdit, onNavigate }) {
       return
     }
     setDetails((current) => ({ ...current, [activity.activityId]: activity }))
+  }
+
+  const handleDeleteActivity = async (activity) => {
+    if (!window.confirm(`ต้องการลบกิจกรรม “${activity.title}” ใช่หรือไม่?\n\nข้อมูลใน Google Sheet รูปภาพ และโฟลเดอร์กิจกรรมใน Drive จะถูกย้ายไปถังขยะ`)) return
+    setDeletingId(activity.activityId)
+    setDeleteError('')
+    try {
+      await deleteActivities([activity.activityId])
+      removeCachedActivities([activity.activityId])
+      setDetails((current) => ({ ...current, [activity.activityId]: null }))
+      await reload()
+    } catch (deleteActivityError) {
+      setDeleteError(deleteActivityError.message)
+    } finally {
+      setDeletingId('')
+    }
   }
 
   if (loading) return <LoadingPanel message="กำลังโหลดประวัติกิจกรรม..." />
@@ -572,6 +605,7 @@ function HistoryPage({ onEdit, onNavigate }) {
   return (
     <section className="space-y-4">
       {notice && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">{notice}</div>}
+      {deleteError && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">{deleteError}</div>}
       <div className="flex flex-col gap-3 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row">
         <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass.replace('mt-2 ', '')} placeholder="ค้นหาชื่อกลุ่ม ชื่อกิจกรรม ผู้บันทึก หรือวันที่" />
         <button type="button" onClick={reload} className="shrink-0 rounded-xl border border-blue-200 px-5 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">รีเฟรชข้อมูล</button>
@@ -592,6 +626,7 @@ function HistoryPage({ onEdit, onNavigate }) {
             <div className="flex shrink-0 gap-2">
               <button type="button" onClick={() => toggleDetails(activity)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">{details[activity.activityId] ? 'ซ่อนรายละเอียด' : 'ดูรายละเอียด'}</button>
               <button type="button" onClick={() => onEdit(details[activity.activityId] || activity)} className="rounded-xl border border-blue-200 px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-50">แก้ไข</button>
+              <button type="button" onClick={() => handleDeleteActivity(activity)} disabled={Boolean(deletingId)} className="inline-flex items-center gap-1 rounded-xl border border-rose-200 px-4 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60"><Icon name="trash" className="h-4 w-4" />{deletingId === activity.activityId ? 'กำลังลบ...' : 'ลบ'}</button>
             </div>
           </div>
           {details[activity.activityId] && (
@@ -733,6 +768,24 @@ function downloadActivitiesCsv(groupName, activities) {
 function ReportsPage() {
   const { activities, loading, error, reload } = useActivities(true, false)
   const [exportError, setExportError] = useState('')
+  const [deletingGroup, setDeletingGroup] = useState('')
+
+  const handleDeleteReport = async (groupName, groupActivities) => {
+    if (!window.confirm(`ต้องการลบรายงานของกลุ่ม “${groupName}” ใช่หรือไม่?\n\nกิจกรรมทั้ง ${groupActivities.length} รายการ รวมถึงรูปภาพและโฟลเดอร์ใน Drive จะถูกย้ายไปถังขยะ`)) return
+    const activityIds = groupActivities.map((activity) => activity.activityId)
+    setDeletingGroup(groupName)
+    setExportError('')
+    try {
+      await deleteActivities(activityIds)
+      removeCachedActivities(activityIds)
+      await reload()
+    } catch (deleteReportError) {
+      setExportError(deleteReportError.message)
+    } finally {
+      setDeletingGroup('')
+    }
+  }
+
   if (loading) return <LoadingPanel message="กำลังตรวจสอบความครบถ้วนของรายงาน..." />
   if (error) return <div className="rounded-[24px] border border-rose-200 bg-rose-50 p-8 text-center text-rose-700"><p className="font-bold">โหลดข้อมูลรายงานไม่สำเร็จ</p><p className="mt-2 text-sm">{error}</p><button type="button" onClick={reload} className="mt-5 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-bold text-white">ลองใหม่</button></div>
 
@@ -756,9 +809,10 @@ function ReportsPage() {
             <h3 className="text-lg font-extrabold text-slate-950">{groupName}</h3>
             <p className="mt-2 text-sm text-slate-500">บันทึกแล้ว {activityCount} กิจกรรม · ครอบคลุม {completedSteps} จาก 7 ขั้นตอน</p>
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(100, completedSteps / 7 * 100)}%` }} /></div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <button type="button" onClick={() => { setExportError(''); if (!printGroupReport(groupName, groupActivities)) setExportError('เบราว์เซอร์ปิดกั้นหน้ารายงาน กรุณาอนุญาต Pop-up แล้วลองใหม่') }} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700">พิมพ์ / บันทึก PDF</button>
               <button type="button" onClick={() => downloadActivitiesCsv(groupName, groupActivities)} className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100">ดาวน์โหลด CSV</button>
+              <button type="button" onClick={() => handleDeleteReport(groupName, groupActivities)} disabled={Boolean(deletingGroup)} className="inline-flex items-center justify-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-bold text-rose-600 transition hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60"><Icon name="trash" className="h-4 w-4" />{deletingGroup === groupName ? 'กำลังลบ...' : 'ลบรายงาน'}</button>
             </div>
           </article>
         )
