@@ -642,6 +642,17 @@ function printGroupReport(groupName, activities) {
     return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
   }
   const signature = (name, role) => `<div class="signature"><div>ลงชื่อ........................................................</div><div>(${escapeHtml(name)})</div><strong>${escapeHtml(role)}</strong></div>`
+  const scheduleRows = ordered.map((activity) => {
+    const time = [activity.startTime, activity.endTime].filter(Boolean).join(' - ') || '-'
+    const activityDetail = [activity.title, activity.details].filter(Boolean).join('\n') || '-'
+    return `<tr>
+      <td>${escapeHtml(activity.activityNo)}</td>
+      <td>${escapeHtml(thaiDate(activity.activityDate))}</td>
+      <td>${escapeHtml(time)}</td>
+      <td>${escapeHtml(activity.hours)}</td>
+      <td class="schedule-activity">${escapeHtml(activityDetail)}</td>
+    </tr>`
+  }).join('')
   const activityPages = ordered.map((activity) => {
     const images = Array.isArray(activity.images) ? activity.images.slice(0, 4) : []
     const imageCells = Array.from({ length: 4 }, (_, index) => {
@@ -671,7 +682,7 @@ function printGroupReport(groupName, activities) {
   const cover = `<section class="page cover">
     <img class="report-logo" src="${escapeHtml(reportLogoUrl)}" alt="ตราโรงเรียนหาดใหญ่รัฐประชาสรรค์">
     <h1>รายงานผลการดำเนินงานชุมชนแห่งการเรียนรู้ทางวิชาชีพ (PLC)</h1>
-    <p class="school">โรงเรียนหาดใหญ่รัฐประชาสรรค์ ปีการศึกษา ${escapeHtml(group.academicYear || new Date().getFullYear() + 543)}</p>
+    <p class="school">โรงเรียนหาดใหญ่รัฐประชาสรรค์ ภาคเรียนที่ ${escapeHtml(group.semester || '-')} ปีการศึกษา ${escapeHtml(group.academicYear || new Date().getFullYear() + 543)}</p>
     <dl>
       <dt>ชื่อกลุ่ม PLC</dt><dd>${escapeHtml(groupName)}</dd>
       <dt>กลุ่มสาระการเรียนรู้</dt><dd>${escapeHtml(group.learningArea || 'สังคมศึกษา ศาสนาและวัฒนธรรม')}</dd>
@@ -682,12 +693,17 @@ function printGroupReport(groupName, activities) {
       <dt>สมาชิก</dt><dd>${escapeHtml(members || '-')}</dd>
       <dt>สรุปการดำเนินงาน</dt><dd>${ordered.length} กิจกรรม รวม ${totalHours} ชั่วโมง ดำเนินการ ${new Set(ordered.map((activity) => Number(activity.plcStep))).size} จาก 7 ขั้นตอน</dd>
     </dl>
-    <h2>รายละเอียดรายกิจกรรม</h2><p>รายงานส่วนถัดไปจัดให้ 1 กิจกรรมต่อ 1 หน้ากระดาษ พร้อมรูปภาพหลักฐานและส่วนลงนาม</p>
+    <h2>ปฏิทินการดำเนินงานชุมชนการเรียนรู้ทางวิชาชีพ PLC</h2>
+    <table class="schedule-table">
+      <thead><tr><th>ครั้งที่</th><th>วันที่</th><th>เวลา</th><th>จำนวนชั่วโมง</th><th>กิจกรรม</th></tr></thead>
+      <tbody>${scheduleRows}</tbody>
+      <tfoot><tr><th colspan="3">รวมทั้งสิ้น</th><th>${escapeHtml(totalHours)}</th><th>${ordered.length} ครั้ง</th></tr></tfoot>
+    </table>
   </section>`
 
   reportWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>รายงาน PLC - ${escapeHtml(groupName)}</title><style>
     @page{size:A4;margin:10mm 12mm}*{box-sizing:border-box}body{margin:0;background:#e5e7eb;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;color:#000;line-height:1.28;font-size:16pt}.page{width:210mm;min-height:297mm;margin:10px auto;padding:13mm 14mm;background:#fff;page-break-after:always}.page:last-child{page-break-after:auto}.cover{padding-top:25mm}.cover h1{text-align:center;font-size:24pt;line-height:1.2;margin:0}.school{text-align:center;font-size:19pt;margin:8px 0 25px}.cover dl{display:grid;grid-template-columns:48mm 1fr;gap:8px;font-size:17pt}.cover dt{font-weight:bold}.cover dd{margin:0}.cover h2{margin-top:22px;font-size:20pt}.activity-heading{display:flex;justify-content:space-between;border-bottom:1px solid #111;padding-bottom:5px;margin-bottom:6px;font-size:17pt}.activity-table{width:100%;border-collapse:collapse;font-size:14pt;line-height:1.18}.activity-table th,.activity-table td{border:1px solid #333;padding:3px 6px;vertical-align:top}.activity-table td{white-space:pre-wrap}.activity-table th{width:42mm;text-align:center;font-weight:bold}.evidence-title{font-size:16pt;margin:6px 0 3px}.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}.photo{height:29mm;border:1px solid #777;overflow:hidden;position:relative;display:grid;place-items:center;background:#fff;font-size:13pt}.photo img{display:block;width:100%;height:100%;object-fit:contain;object-position:center center}.photo span{position:absolute;bottom:0;left:0;right:0;padding:1px 4px;background:rgba(255,255,255,.86);font-size:11pt}.photo.empty{color:#555;border-radius:7px}.signature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:5px;text-align:center}.signature-row.two{grid-template-columns:1fr 1fr}.signature{font-size:12pt;line-height:1.2}.signature strong{display:block;font-size:12.5pt}.subject-head{width:55%;margin:4px auto 0;text-align:center}.opinion{border-top:1px solid #111;border-bottom:1px solid #111;margin-top:5px;padding:3px 6px;text-align:left;font-size:12pt;line-height:1.2}.opinion>strong{display:block;font-size:13pt}.writing-lines{line-height:1.25;color:#333}.opinion .signature-row{margin-top:1px}.director{text-align:center}.director>.signature{width:58%;margin:1px auto 0}.print-button{position:fixed;right:20px;top:20px;z-index:10;padding:11px 20px;background:#2563eb;color:white;border:0;border-radius:9px;font-family:"TH SarabunPSK","TH Sarabun New",sans-serif;font-size:16pt;font-weight:bold;box-shadow:0 4px 14px #0003}@media print{body{background:#fff}.page{margin:0;padding:10mm 12mm;box-shadow:none}.print-button{display:none}}
-    .page{position:relative}.report-logo{position:absolute;top:10mm;left:12mm;width:24mm;height:24mm;object-fit:contain;object-position:center}.cover h1{padding-left:18mm;padding-right:18mm}
+    .page{position:relative}.photo{height:24mm}.report-logo{position:absolute;top:8mm;left:12mm;width:22mm;height:22mm;object-fit:contain;object-position:center}.cover{padding-top:22mm}.cover h1{padding-left:18mm;padding-right:18mm}.cover .school{margin:5px 0 10px}.cover dl{gap:3px;font-size:14pt;margin:0}.cover h2{text-align:center;margin:10px 0 5px;font-size:18pt}.schedule-table{width:100%;border-collapse:collapse;font-size:11.5pt;line-height:1.12}.schedule-table th,.schedule-table td{border:1px solid #222;padding:3px 5px;vertical-align:middle;text-align:center}.schedule-table th:nth-child(1){width:12mm}.schedule-table th:nth-child(2){width:31mm}.schedule-table th:nth-child(3){width:27mm}.schedule-table th:nth-child(4){width:21mm}.schedule-table .schedule-activity{text-align:left;white-space:pre-wrap}.schedule-table thead,.schedule-table tfoot{background:#f1f5f9;font-weight:bold}
   </style></head><body><button class="print-button" onclick="window.print()">พิมพ์ / บันทึก PDF</button>${cover}${activityPages}</body></html>`)
   reportWindow.document.close()
   reportWindow.focus()
