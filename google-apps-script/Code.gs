@@ -402,15 +402,20 @@ function getActivityFolderName_(activityNo, activityDate) {
   const activityNumber = Number(activityNo)
   const numberLabel = Number.isFinite(activityNumber) && activityNumber > 0
     ? String(Math.trunc(activityNumber)).padStart(2, '0')
-    : clean_(activityNo) || 'ไม่ระบุ'
-  return safeFolderName_(`ครั้งที่ ${numberLabel} - ${formatActivityFolderDate_(activityDate)}`)
+    : '00'
+  return `${formatActivityFolderDate_(activityDate)}${numberLabel}`
 }
 
 function formatActivityFolderDate_(value) {
   const dateValue = formatDateValue_(value)
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue)
-  if (!match) return dateValue || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd')
-  return `${Number(match[1]) + 543}-${match[2]}-${match[3]}`
+  if (match) return `${match[3]}${match[2]}${Number(match[1]) + 543}`
+
+  const now = new Date()
+  const timeZone = Session.getScriptTimeZone()
+  const dayMonth = Utilities.formatDate(now, timeZone, 'ddMM')
+  const buddhistYear = Number(Utilities.formatDate(now, timeZone, 'yyyy')) + 543
+  return `${dayMonth}${buddhistYear}`
 }
 
 function getActivityFolderMarker_(activityId) {
